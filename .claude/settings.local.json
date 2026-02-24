@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init)",
+      "Bash(git add .)",
+      "Bash(git commit -m \"chore: init project scaffold\n\n- 创建项目目录结构\n- 添加后端FastAPI基础框架\n- 添加前端Vue 3基础框架\n- 创建数据模型和API接口\n- 添加示例数据和文档\n- 配置部署环境\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\")",
+      "Bash(uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(python -c \"from app.main import app; print\\(''导入成功''\\)\")",
+      "Bash(python -c \"from app.api.endpoints import router; print\\(''endpoints导入成功''\\); print\\(dir\\(router\\)\\)\")"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+exam_id,qno,qtype,score,section,knowledge_point,co_code,indicator_code
+1,1,单选题,10,第1章,数据结构基本概念,CO1,IND1
+1,2,多选题,10,第1章,数据结构基本概念,CO1,IND1
+1,3,填空题,10,第2章,线性表,CO2,IND2
+1,4,简答题,15,第2章,线性表,CO2,IND2
+1,5,编程题,15,第3章,栈和队列,CO3,IND3
+1,6,编程题,20,第4章,树和二叉树,CO4,IND4
+1,7,简答题,20,第5章,图,CO4,IND4
