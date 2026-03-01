@@ -1,21 +1,17 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.core.config import settings
+﻿from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# 创建数据库引擎
+from backend.app.core.config import settings
+
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
 )
 
-# 创建Session工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 创建Base类
 Base = declarative_base()
 
-# 依赖项，用于获取数据库会话
+
 def get_db():
     db = SessionLocal()
     try:

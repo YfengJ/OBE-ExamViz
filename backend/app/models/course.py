@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy import Column, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+
+from backend.app.core.database import Base
+
 
 class Course(Base):
     __tablename__ = "courses"
@@ -14,7 +16,6 @@ class Course(Base):
     credit = Column(Float, default=0.0)
     description = Column(Text, nullable=True)
 
-    # 关系
     exams = relationship("Exam", back_populates="course")
     assessment_components = relationship("AssessmentComponent", back_populates="course")
     obe_outcomes = relationship("OBEOutcome", back_populates="course")

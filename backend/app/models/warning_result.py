@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime
-from sqlalchemy.orm import relationship
-from app.core.database import Base
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy.orm import relationship
+
+from backend.app.core.database import Base
+
 
 class WarningResult(Base):
     __tablename__ = "warning_results"
@@ -10,11 +13,11 @@ class WarningResult(Base):
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     term = Column(String, nullable=False)
-    level = Column(String, nullable=False)  # warning/critical
-    reasons_json = Column(JSON, nullable=False)  # 预警原因
-    ai_summary = Column(String, nullable=True)  # AI生成的分析摘要
+    level = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending")
+    reasons_json = Column(JSON, nullable=False)
+    ai_summary = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # 关系
     student = relationship("Student", back_populates="warnings")
     course = relationship("Course")

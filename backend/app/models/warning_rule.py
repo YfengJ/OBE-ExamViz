@@ -1,15 +1,16 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON
+from sqlalchemy import Column, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+
+from backend.app.core.database import Base
+
 
 class WarningRule(Base):
     __tablename__ = "warning_rules"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)  # 为空表示全局规则
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     name = Column(String, nullable=False)
-    level = Column(String, nullable=False)  # warning/critical
-    config_json = Column(JSON, nullable=False)  # 规则配置JSON
+    level = Column(String, nullable=False)
+    config_json = Column(JSON, nullable=False)
 
-    # 关系
     course = relationship("Course", back_populates="warning_rules")

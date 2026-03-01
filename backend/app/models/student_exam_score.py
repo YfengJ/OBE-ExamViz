@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey
+from sqlalchemy import Column, Float, ForeignKey, Integer
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+
+from backend.app.core.database import Base
+
 
 class StudentExamScore(Base):
     __tablename__ = "student_exam_scores"
@@ -10,6 +12,5 @@ class StudentExamScore(Base):
     exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
     total_score = Column(Float, default=0.0)
 
-    # 关系
     student = relationship("Student", back_populates="exam_scores")
     exam = relationship("Exam", back_populates="student_scores")

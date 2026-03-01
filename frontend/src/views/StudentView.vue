@@ -1,196 +1,296 @@
-<template>
-  <div class="student-view">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>学生管理</span>
-          <el-button type="primary" @click="handleAdd">添加学生</el-button>
+﻿<template>
+  <section class="page-grid">
+    <article class="card panel">
+      <div class="panel-header">
+        <div class="header-titles">
+          <h3>学生名单</h3>
+          <p class="subtitle">管理班级学生及成绩导入</p>
         </div>
-      </template>
+        <div class="action-bar gap">
+          <el-input 
+            v-model="classFilter" 
+            placeholder="按班级筛选" 
+            class="premium-input"
+            clearable 
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          
+          <el-button-group class="modern-btn-group">
+            <el-upload :show-file-list="false" :http-request="uploadStudents" accept=".csv,.xlsx,.xls" class="upload-inline">
+              <el-button plain class="action-btn">导入名单</el-button>
+            </el-upload>
+            <el-upload :show-file-list="false" :http-request="uploadExamScores" accept=".csv,.xlsx,.xls" class="upload-inline">
+              <el-button plain type="success" class="action-btn">导入成绩</el-button>
+            </el-upload>
+          </el-button-group>
 
-      <div class="operation-bar">
-        <el-upload
-          action="/api/analysis/upload-csv"
-          accept=".csv"
-          :show-file-list="false"
-          :on-success="handleUploadSuccess"
-          style="display: inline-block; margin-right: 10px"
-        >
-          <el-button type="success">导入CSV</el-button>
-        </el-upload>
-        <el-button type="warning" @click="handleExport">导出</el-button>
+          <el-button type="primary" class="primary-action-btn" @click="openCreate">
+            + 新增学生
+          </el-button>
+        </div>
       </div>
 
-      <el-table :data="students" style="width: 100%; margin-top: 20px" border>
-        <el-table-column prop="student_no" label="学号" width="120" />
-        <el-table-column prop="name" label="姓名" width="100" />
-        <el-table-column prop="class_name" label="班级" width="120" />
-        <el-table-column prop="major" label="专业" width="150" />
-        <el-table-column prop="grade_year" label="年级" width="100" />
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table :data="students" class="premium-table" row-key="id">
+          <el-table-column prop="student_no" label="学号" width="160">
+            <template #default="{ row }">
+              <span class="mono-id">{{ row.student_no }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="姓名" width="160">
+            <template #default="{ row }">
+              <span class="fw-bold">{{ row.name }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="class_name" label="班级" width="140">
+            <template #default="{ row }">
+              <el-tag size="small" effect="plain" class="class-tag">{{ row.class_name }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="major" label="专业" />
+          <el-table-column prop="grade_year" label="年级" width="100" align="center" />
+          <el-table-column label="操作" width="150" align="center">
+            <template #default="{ row }">
+              <div class="row-actions">
+                <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-divider direction="vertical" />
+                <el-button link type="danger" @click="remove(row.id)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </article>
 
-      <el-pagination
-        style="margin-top: 20px; text-align: center"
-        v-model:currentPage="currentPage"
-        v-model:page-size="pageSize"
-        :total="total"
-        layout="total, prev, pager, next"
-        @current-change="handlePageChange"
-      />
-    </el-card>
-
-    <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
-      <el-form :model="studentForm" label-width="80px">
-        <el-form-item label="学号">
-          <el-input v-model="studentForm.student_no" />
-        </el-form-item>
-        <el-form-item label="姓名">
-          <el-input v-model="studentForm.name" />
-        </el-form-item>
-        <el-form-item label="班级">
-          <el-input v-model="studentForm.class_name" />
-        </el-form-item>
-        <el-form-item label="专业">
-          <el-input v-model="studentForm.major" />
-        </el-form-item>
-        <el-form-item label="年级">
-          <el-input v-model="studentForm.grade_year" />
-        </el-form-item>
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑学生' : '新增学生'" width="480px" class="premium-dialog" destroy-on-close>
+      <el-form :model="form" label-position="top" class="premium-form">
+        <div class="form-grid">
+          <el-form-item label="学号"><el-input v-model="form.student_no" placeholder="例如 20230001"/></el-form-item>
+          <el-form-item label="姓名"><el-input v-model="form.name" placeholder="张三" /></el-form-item>
+          <el-form-item label="班级"><el-input v-model="form.class_name" placeholder="计科2301"/></el-form-item>
+          <el-form-item label="年级"><el-input v-model="form.grade_year" placeholder="2023" /></el-form-item>
+        </div>
+        <el-form-item label="专业"><el-input v-model="form.major" placeholder="计算机科学与技术..."/></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button plain @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="save">保存学生</el-button>
       </template>
     </el-dialog>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-interface Student {
-  id: number
-  student_no: string
-  name: string
-  class_name: string
-  major: string
-  grade_year: string
-}
+import { importApi, type Student, studentApi } from '../api/modules/analysis'
 
 const students = ref<Student[]>([])
-const currentPage = ref(1)
-const pageSize = ref(20)
-const total = ref(0)
+const classFilter = ref('')
 const dialogVisible = ref(false)
-const dialogTitle = ref('添加学生')
-const studentForm = ref({
+const editingId = ref<number | null>(null)
+
+const form = reactive<Omit<Student, 'id'>>({
   student_no: '',
-  name: '',
+  name: null,
   class_name: '',
   major: '',
-  grade_year: ''
+  grade_year: '',
 })
 
-const fetchStudents = async () => {
-  try {
-    const response = await axios.get('/api/analysis/students', {
-      params: {
-        skip: (currentPage.value - 1) * pageSize.value,
-        limit: pageSize.value
-      }
-    })
-    students.value = response.data
-  } catch (error) {
-    ElMessage.error('获取学生列表失败')
-  }
+const query = computed(() => ({ class_name: classFilter.value || undefined, limit: 1000 }))
+watch(query, () => load(), { deep: true })
+
+function resetForm() {
+  form.student_no = ''
+  form.name = null
+  form.class_name = ''
+  form.major = ''
+  form.grade_year = ''
 }
 
-const handleAdd = () => {
-  dialogTitle.value = '添加学生'
-  studentForm.value = {
-    student_no: '',
-    name: '',
-    class_name: '',
-    major: '',
-    grade_year: ''
-  }
+async function load() {
+  students.value = await studentApi.list(query.value)
+}
+
+function openCreate() {
+  editingId.value = null
+  resetForm()
   dialogVisible.value = true
 }
 
-const handleEdit = (row: Student) => {
-  dialogTitle.value = '编辑学生'
-  studentForm.value = { ...row }
+function openEdit(row: Student) {
+  editingId.value = row.id
+  form.student_no = row.student_no
+  form.name = row.name
+  form.class_name = row.class_name
+  form.major = row.major
+  form.grade_year = row.grade_year
   dialogVisible.value = true
 }
 
-const handleDelete = async (row: Student) => {
-  try {
-    await ElMessageBox.confirm('确认删除该学生？')
-    await axios.delete(`/api/analysis/students/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchStudents()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+async function save() {
+  if (!form.student_no || !form.class_name || !form.major || !form.grade_year) {
+    ElMessage.warning('所有内容必填。')
+    return
   }
-}
-
-const handleSave = async () => {
-  try {
-    if (dialogTitle.value === '添加学生') {
-      await axios.post('/api/analysis/students', studentForm.value)
-    } else {
-      await axios.put(`/api/analysis/students/${studentForm.value.id}`, studentForm.value)
-    }
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
-    fetchStudents()
-  } catch (error) {
-    ElMessage.error('保存失败')
+  if (editingId.value) {
+    await studentApi.update(editingId.value, form)
+    ElMessage.success('学生记录已更新。')
+  } else {
+    await studentApi.create(form)
+    ElMessage.success('新学生已注册。')
   }
+  dialogVisible.value = false
+  await load()
 }
 
-const handleUploadSuccess = () => {
-  ElMessage.success('导入成功')
-  fetchStudents()
+async function remove(id: number) {
+  await ElMessageBox.confirm('确定要永久删除该名学生吗？', '确认删除', { 
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消'
+  })
+  await studentApi.remove(id)
+  ElMessage.success('学生已删除。')
+  await load()
 }
 
-const handleExport = () => {
-  ElMessage.info('导出功能待实现')
+async function uploadStudents(option: { file: File }) {
+  const result = await importApi.students(option.file)
+  ElMessage.success(`导入完成: 新增 ${result.inserted} 条, 更新 ${result.updated} 条, 跳过 ${result.skipped} 条。`)
+  await load()
 }
 
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-  fetchStudents()
+async function uploadExamScores(option: { file: File }) {
+  const result = await importApi.examScores(option.file)
+  ElMessage.success(`导入成绩: 新增 ${result.inserted} 条, 更新 ${result.updated} 条, 跳过 ${result.skipped} 条。`)
 }
 
-onMounted(() => {
-  fetchStudents()
-})
+onMounted(load)
 </script>
 
 <style scoped>
-.student-view {
-  padding: 20px;
+.panel-header {
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 1.5rem;
 }
 
-.card-header {
+.header-titles .subtitle {
+  margin: 0.25rem 0 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.action-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.operation-bar {
-  margin-bottom: 20px;
+.premium-input {
+  width: 240px !important;
+  --el-input-border-radius: var(--radius-sm);
+}
+
+.upload-inline {
+  display: inline-block;
+}
+
+.modern-btn-group {
+  display: flex;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.action-btn {
+  border-radius: 0;
+  border: 1px solid var(--border-strong);
+  margin: 0 !important;
+  font-family: var(--font-body);
+}
+
+.upload-inline:first-child .action-btn {
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+  border-right: none;
+}
+.upload-inline:last-child .action-btn {
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.primary-action-btn {
+  padding: 0 1.25rem;
+}
+
+.table-container {
+  margin: 0 -0.5rem;
+}
+
+.premium-table {
+  --el-table-bg-color: transparent;
+}
+
+.mono-id {
+  font-family: var(--font-display);
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.fw-bold {
+  font-weight: 600;
+  color: var(--ink-title);
+}
+
+.class-tag {
+  font-family: var(--font-display);
+  border-color: var(--border-subtle);
+  color: var(--ink-body);
+  border-radius: 6px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  opacity: 0.6;
+  transition: var(--trans-fast);
+}
+
+.premium-table:deep(.el-table__row:hover) .row-actions {
+  opacity: 1;
+}
+
+/* Dialog Styles */
+.premium-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+
+.premium-form :deep(.el-form-item__label) {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--ink-title);
+  padding-bottom: 4px;
+}
+
+.premium-form :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--border-strong) !important;
+  border-radius: var(--radius-sm);
+}
+.premium-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--brand-primary) !important;
 }
 </style>

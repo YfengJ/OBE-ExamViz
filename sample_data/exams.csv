@@ -1,4 +1,7 @@
-course_id,exam_type,name,date,total_score
-1,final,数据结构期末考试,2025-01-10,100
-2,final,算法分析期末考试,2025-01-12,100
-3,final,数据库系统期末考试,2025-01-15,100
+﻿course_id,exam_type,name,date,total_score
+1,final,数据结构期末考试,2026-01-10,100
+2,final,数据库系统期末考试,2026-01-12,100
+3,final,计算机网络期末考试,2026-01-14,100
+4,final,操作系统期末考试,2026-01-16,100
+5,final,软件工程期末考试,2026-01-18,100
+6,final,Python程序设计期末考试,2026-01-20,100

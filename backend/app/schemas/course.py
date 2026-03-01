@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+
 
 class CourseBase(BaseModel):
     course_code: str
@@ -8,10 +8,22 @@ class CourseBase(BaseModel):
     department: str
     major: str
     credit: float = 0.0
-    description: Optional[str] = None
+    description: str | None = None
+
 
 class CourseCreate(CourseBase):
     pass
+
+
+class CourseUpdate(BaseModel):
+    course_code: str | None = None
+    course_name: str | None = None
+    term: str | None = None
+    department: str | None = None
+    major: str | None = None
+    credit: float | None = None
+    description: str | None = None
+
 
 class CourseResponse(CourseBase):
     id: int

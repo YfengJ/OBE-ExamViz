@@ -3,10 +3,10 @@
 ## 1. API概述
 
 ### 1.1 基础信息
-- **API根地址**：`http://localhost:8000/api/v1`
-- **API文档**：`http://localhost:8000/docs` (Swagger UI)
-- **API格式**：RESTful JSON
-- **认证方式**：JWT Token (待实现)
+- API根地址：`http://localhost:8000/api/v1`
+- API文档：`http://localhost:8000/docs` (Swagger UI)
+- API格式：RESTful JSON
+- 认证方式：JWT Token (待实现)
 
 ### 1.2 响应格式
 所有API响应遵循统一格式：
@@ -34,13 +34,13 @@
 GET /analysis/students
 ```
 
-**参数**
+参数
 - `skip`：跳过数量（默认0）
 - `limit`：返回数量（默认100，最大1000）
 - `class_name`：班级筛选（可选）
 - `major`：专业筛选（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -68,7 +68,7 @@ GET /analysis/students
 POST /analysis/students
 ```
 
-**请求体**
+请求体
 ```json
 {
   "student_no": "2021001",
@@ -79,7 +79,7 @@ POST /analysis/students
 }
 ```
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -100,7 +100,7 @@ POST /analysis/students
 PUT /analysis/students/{student_id}
 ```
 
-**请求体**
+请求体
 ```json
 {
   "name": "张三丰",
@@ -120,11 +120,11 @@ DELETE /analysis/students/{student_id}
 GET /analysis/courses
 ```
 
-**参数**
+参数
 - `term`：学期筛选（可选）
 - `major`：专业筛选（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -149,7 +149,7 @@ GET /analysis/courses
 POST /analysis/courses
 ```
 
-**请求体**
+请求体
 ```json
 {
   "course_code": "CS101",
@@ -179,11 +179,11 @@ DELETE /analysis/courses/{course_id}
 GET /analysis/exams
 ```
 
-**参数**
+参数
 - `course_id`：课程ID筛选（可选）
 - `exam_type`：考试类型筛选（usual/mid/final）（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -207,7 +207,7 @@ GET /analysis/exams
 POST /analysis/exams
 ```
 
-**请求体**
+请求体
 ```json
 {
   "course_id": 1,
@@ -235,11 +235,11 @@ DELETE /analysis/exams/{exam_id}
 GET /analysis/questions
 ```
 
-**参数**
+参数
 - `exam_id`：考试ID（必需）
 - `qtype`：题型筛选（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -265,7 +265,7 @@ GET /analysis/questions
 POST /analysis/questions
 ```
 
-**请求体**
+请求体
 ```json
 {
   "exam_id": 1,
@@ -296,12 +296,12 @@ DELETE /analysis/questions/{question_id}
 GET /analysis/student-exam-scores
 ```
 
-**参数**
+参数
 - `student_id`：学生ID（可选）
 - `exam_id`：考试ID（可选）
 - `course_id`：课程ID（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -323,7 +323,7 @@ GET /analysis/student-exam-scores
 POST /analysis/student-exam-scores
 ```
 
-**请求体**
+请求体
 ```json
 {
   "student_id": 1,
@@ -337,7 +337,7 @@ POST /analysis/student-exam-scores
 POST /analysis/student-exam-scores/batch
 ```
 
-**请求体**
+请求体
 ```json
 {
   "scores": [
@@ -362,12 +362,12 @@ POST /analysis/student-exam-scores/batch
 POST /analysis/upload-csv
 ```
 
-**Content-Type**: `multipart/form-data`
+Content-Type: `multipart/form-data`
 
-**参数**
+参数
 - `file`: CSV文件
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -392,9 +392,9 @@ POST /analysis/upload-csv
 POST /analysis/upload-excel
 ```
 
-**Content-Type**: `multipart/form-data`
+Content-Type: `multipart/form-data`
 
-**参数**
+参数
 - `file`: Excel文件
 
 ## 8. 分析计算API
@@ -404,12 +404,12 @@ POST /analysis/upload-excel
 GET /analysis/score-statistics
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（必需）
 - `exam_id`：考试ID（可选）
 - `class_name`：班级（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -440,10 +440,10 @@ GET /analysis/score-statistics
 GET /analysis/question-analysis
 ```
 
-**参数**
+参数
 - `exam_id`：考试ID（必需）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -467,11 +467,11 @@ GET /analysis/question-analysis
 GET /analysis/obe-achievement
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（必需）
 - `exam_id`：考试ID（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -497,12 +497,12 @@ GET /analysis/obe-achievement
 GET /analysis/warnings
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（可选）
 - `level`：预警级别（warning/critical）（可选）
 - `status`：处理状态（pending/resolved）（可选）
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -532,12 +532,12 @@ GET /analysis/warnings
 GET /analysis/export-score-report
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（必需）
 - `exam_id`：考试ID（必需）
 - `format`：格式（excel/csv）（默认excel）
 
-**响应**
+响应
 - Excel文件下载
 
 ### 9.2 导出OBE分析报告
@@ -545,7 +545,7 @@ GET /analysis/export-score-report
 GET /analysis/export-obe-report
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（必需）
 - `format`：格式（excel/pdf）（默认excel）
 
@@ -554,7 +554,7 @@ GET /analysis/export-obe-report
 GET /analysis/export-warnings
 ```
 
-**参数**
+参数
 - `course_id`：课程ID（可选）
 - `format`：格式（excel/csv）（默认excel）
 
@@ -565,7 +565,7 @@ GET /analysis/export-warnings
 POST /analysis/ai-analyze
 ```
 
-**请求体**
+请求体
 ```json
 {
   "student_id": 1,
@@ -574,7 +574,7 @@ POST /analysis/ai-analyze
 }
 ```
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -590,7 +590,7 @@ POST /analysis/ai-analyze
 POST /analysis/ai-analyze/batch
 ```
 
-**请求体**
+请求体
 ```json
 {
   "student_ids": [1, 2, 3],
@@ -605,7 +605,7 @@ POST /analysis/ai-analyze/batch
 GET /health
 ```
 
-**响应**
+响应
 ```json
 {
   "code": 200,
@@ -622,7 +622,7 @@ GET /health
 GET /system/info
 ```
 
-**响应**
+响应
 ```json
 {
   "code": 200,
