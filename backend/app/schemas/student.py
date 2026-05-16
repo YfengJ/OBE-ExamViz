@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class StudentBase(BaseModel):
@@ -24,5 +24,4 @@ class StudentUpdate(BaseModel):
 class StudentResponse(StudentBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

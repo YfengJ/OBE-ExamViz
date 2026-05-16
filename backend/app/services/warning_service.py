@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -99,7 +99,7 @@ def generate_warnings(db: Session, course_id: int, term: str) -> list[dict]:
             warning.status = "pending"
             warning.reasons_json = reasons
             warning.ai_summary = None
-            warning.created_at = datetime.utcnow()
+            warning.created_at = datetime.now(timezone.utc)
         else:
             warning = WarningResult(
                 student_id=student.id,
@@ -109,7 +109,7 @@ def generate_warnings(db: Session, course_id: int, term: str) -> list[dict]:
                 status="pending",
                 reasons_json=reasons,
                 ai_summary=None,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(warning)
         created_or_updated.append(warning)

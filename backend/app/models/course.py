@@ -14,6 +14,7 @@ class Course(Base):
     department = Column(String, nullable=False)
     major = Column(String, nullable=False)
     credit = Column(Float, default=0.0)
+    owner = Column(String, nullable=True)
     description = Column(Text, nullable=True)
 
     exams = relationship("Exam", back_populates="course")

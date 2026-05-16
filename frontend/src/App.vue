@@ -10,9 +10,9 @@
               <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <div class="brand-text">
-            <h1>OBE 教学分析</h1>
-            <p>数据可视化平台</p>
+        <div class="brand-text">
+            <h1>OBE 期末试卷分析</h1>
+            <p>成绩分析与报告导出</p>
           </div>
         </div>
         
@@ -49,12 +49,12 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const navItems = [
-  { path: '/', label: '总览看板' },
-  { path: '/students', label: '学生管理' },
-  { path: '/courses', label: '课程管理' },
-  { path: '/exams', label: '考试管理' },
-  { path: '/analysis', label: '分析中心' },
-  { path: '/warnings', label: '预警中心' },
+  { path: '/', label: '分析任务' },
+  { path: '/courses', label: '课程参数' },
+  { path: '/exams', label: '数据导入' },
+  { path: '/analysis', label: '结构分析' },
+  { path: '/report-preview', label: '报告预览' },
+  { path: '/warnings', label: 'AI建议' },
 ]
 </script>
 

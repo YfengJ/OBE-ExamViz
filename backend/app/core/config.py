@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 
     DATABASE_URL: str = "sqlite:///./obe_analysis.db"
+    AUTO_SEED_DEMO_DATA: bool = False
 
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_BASE: str = "https://api.deepseek.com/v1"
@@ -21,8 +22,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "replace-with-random-secret"
     ALGORITHM: str = "HS256"
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
     @property
     def cors_origins(self) -> list[str]:

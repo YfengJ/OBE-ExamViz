@@ -1,21 +1,30 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from io import BytesIO
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from backend.app.ai.deepseek_client import DeepSeekClient
 from backend.app.core.database import get_db
+from backend.app.models.analysis_run import AnalysisRun
+from backend.app.models.assessment_component import AssessmentComponent
 from backend.app.models.course import Course
 from backend.app.models.exam import Exam
+from backend.app.models.generated_content import GeneratedContent
+from backend.app.models.obe_outcome import OBEOutcome
 from backend.app.models.question import Question
 from backend.app.models.student import Student
+from backend.app.models.student_component_score import StudentComponentScore
+from backend.app.models.student_exam_score import StudentExamScore
+from backend.app.models.student_question_score import StudentQuestionScore
 from backend.app.models.warning_result import WarningResult
+from backend.app.models.warning_rule import WarningRule
 from backend.app.reports.excel_report import build_score_report_excel
 from backend.app.schemas.course import CourseCreate, CourseUpdate
 from backend.app.schemas.exam import ExamCreate, ExamUpdate
@@ -35,6 +44,7 @@ from backend.app.services.import_service import (
     import_questions,
     import_students,
 )
+from backend.app.services.syllabus_service import create_course_from_syllabus
 from backend.app.services.warning_service import generate_warnings, list_warnings, update_warning_status
 from backend.app.utils.errors import not_found
 from backend.app.utils.response import ok
@@ -46,7 +56,7 @@ ai_client = DeepSeekClient()
 @router.get("/students")
 def get_students(
     skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    limit: int = Query(default=100, ge=1, le=5000),
     class_name: str | None = None,
     db: Session = Depends(get_db),
 ):
@@ -85,6 +95,7 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
     item = db.query(Student).filter(Student.id == student_id).first()
     if not item:
         raise not_found("student", student_id)
+    _ensure_student_can_delete(db, student_id)
     db.delete(item)
     db.commit()
     return ok(True)
@@ -106,6 +117,17 @@ def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
     return ok(_course_to_dict(item))
 
 
+@router.post("/courses/from-syllabus")
+def create_course_from_syllabus_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    result = create_course_from_syllabus(db, file)
+    return ok(
+        {
+            "course": _course_to_dict(result["course"]),
+            "outcomes": [_obe_outcome_to_dict(item) for item in result["outcomes"]],
+        }
+    )
+
+
 @router.put("/courses/{course_id}")
 def update_course(course_id: int, payload: CourseUpdate, db: Session = Depends(get_db)):
     item = db.query(Course).filter(Course.id == course_id).first()
@@ -124,6 +146,7 @@ def delete_course(course_id: int, db: Session = Depends(get_db)):
     item = db.query(Course).filter(Course.id == course_id).first()
     if not item:
         raise not_found("course", course_id)
+    _delete_course_related_data(db, course_id)
     db.delete(item)
     db.commit()
     return ok(True)
@@ -163,6 +186,7 @@ def delete_exam(exam_id: int, db: Session = Depends(get_db)):
     item = db.query(Exam).filter(Exam.id == exam_id).first()
     if not item:
         raise not_found("exam", exam_id)
+    _ensure_exam_can_delete(db, exam_id)
     db.delete(item)
     db.commit()
     return ok(True)
@@ -201,6 +225,7 @@ def delete_question(question_id: int, db: Session = Depends(get_db)):
     item = db.query(Question).filter(Question.id == question_id).first()
     if not item:
         raise not_found("question", question_id)
+    _ensure_question_can_delete(db, question_id)
     db.delete(item)
     db.commit()
     return ok(True)
@@ -294,7 +319,7 @@ def export_score_report(course_id: int, exam_id: int, class_name: str | None = N
             "course_id": course_id,
             "exam_id": exam_id,
             "class_name": class_name or "ALL",
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         },
     )
     from urllib.parse import quote
@@ -346,7 +371,7 @@ def import_question_scores_file(file: UploadFile = File(...), db: Session = Depe
 
 @router.post("/upload-excel")
 async def upload_excel(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith((".xlsx", ".xls")):
+    if not file.filename.lower().endswith((".xlsx", ".xls", ".xlsm")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
     contents = await file.read()
@@ -380,7 +405,20 @@ def _course_to_dict(item: Course) -> dict:
         "department": item.department,
         "major": item.major,
         "credit": item.credit,
+        "owner": item.owner,
         "description": item.description,
+    }
+
+
+def _obe_outcome_to_dict(item: OBEOutcome) -> dict:
+    return {
+        "id": item.id,
+        "course_id": item.course_id,
+        "co_code": item.co_code,
+        "co_name": item.co_name,
+        "indicator": item.indicator,
+        "description": item.description,
+        "threshold": item.threshold,
     }
 
 
@@ -401,9 +439,94 @@ def _question_to_dict(item: Question) -> dict:
         "exam_id": item.exam_id,
         "qno": item.qno,
         "qtype": item.qtype,
+        "qgroup_name": item.qgroup_name,
+        "sub_qno": item.sub_qno,
         "score": item.score,
         "section": item.section,
         "knowledge_point": item.knowledge_point,
         "co_code": item.co_code,
         "indicator_code": item.indicator_code,
+        "co_weight": item.co_weight,
+        "expected_threshold": item.expected_threshold,
     }
+
+
+def _conflict(detail: str) -> HTTPException:
+    return HTTPException(status_code=409, detail=detail)
+
+
+def _ensure_student_can_delete(db: Session, student_id: int) -> None:
+    if db.query(StudentExamScore.id).filter(StudentExamScore.student_id == student_id).first():
+        raise _conflict("student has exam scores and cannot be deleted")
+    if db.query(StudentComponentScore.id).filter(StudentComponentScore.student_id == student_id).first():
+        raise _conflict("student has component scores and cannot be deleted")
+    if db.query(StudentQuestionScore.id).filter(StudentQuestionScore.student_id == student_id).first():
+        raise _conflict("student has question scores and cannot be deleted")
+    if db.query(WarningResult.id).filter(WarningResult.student_id == student_id).first():
+        raise _conflict("student has warning records and cannot be deleted")
+
+
+def _delete_course_related_data(db: Session, course_id: int) -> None:
+    exam_ids = _scalar_ids(db.query(Exam.id).filter(Exam.course_id == course_id).all())
+    question_ids = (
+        _scalar_ids(db.query(Question.id).filter(Question.exam_id.in_(exam_ids)).all())
+        if exam_ids
+        else []
+    )
+    component_ids = _scalar_ids(db.query(AssessmentComponent.id).filter(AssessmentComponent.course_id == course_id).all())
+    run_filter = [AnalysisRun.course_id == course_id]
+    if exam_ids:
+        run_filter.append(AnalysisRun.exam_id.in_(exam_ids))
+    run_ids = _scalar_ids(db.query(AnalysisRun.id).filter(or_(*run_filter)).all())
+
+    if run_ids:
+        db.query(GeneratedContent).filter(GeneratedContent.run_id.in_(run_ids)).delete(synchronize_session=False)
+        db.query(AnalysisRun).filter(AnalysisRun.id.in_(run_ids)).delete(synchronize_session=False)
+    if question_ids:
+        db.query(StudentQuestionScore).filter(StudentQuestionScore.question_id.in_(question_ids)).delete(synchronize_session=False)
+        db.query(Question).filter(Question.id.in_(question_ids)).delete(synchronize_session=False)
+    if exam_ids:
+        db.query(StudentExamScore).filter(StudentExamScore.exam_id.in_(exam_ids)).delete(synchronize_session=False)
+        db.query(Exam).filter(Exam.id.in_(exam_ids)).delete(synchronize_session=False)
+    if component_ids:
+        db.query(StudentComponentScore).filter(StudentComponentScore.component_id.in_(component_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(AssessmentComponent).filter(AssessmentComponent.id.in_(component_ids)).delete(synchronize_session=False)
+
+    db.query(OBEOutcome).filter(OBEOutcome.course_id == course_id).delete(synchronize_session=False)
+    db.query(WarningRule).filter(WarningRule.course_id == course_id).delete(synchronize_session=False)
+    db.query(WarningResult).filter(WarningResult.course_id == course_id).delete(synchronize_session=False)
+
+
+def _scalar_ids(rows) -> list[int]:
+    return [int(row[0]) for row in rows]
+
+
+def _ensure_course_can_delete(db: Session, course_id: int) -> None:
+    if db.query(Exam.id).filter(Exam.course_id == course_id).first():
+        raise _conflict("course has exams and cannot be deleted")
+    if db.query(AssessmentComponent.id).filter(AssessmentComponent.course_id == course_id).first():
+        raise _conflict("course has assessment components and cannot be deleted")
+    if db.query(OBEOutcome.id).filter(OBEOutcome.course_id == course_id).first():
+        raise _conflict("course has OBE outcomes and cannot be deleted")
+    if db.query(WarningRule.id).filter(WarningRule.course_id == course_id).first():
+        raise _conflict("course has warning rules and cannot be deleted")
+    if db.query(WarningResult.id).filter(WarningResult.course_id == course_id).first():
+        raise _conflict("course has warning results and cannot be deleted")
+    if db.query(AnalysisRun.id).filter(AnalysisRun.course_id == course_id).first():
+        raise _conflict("course is referenced by analysis runs and cannot be deleted")
+
+
+def _ensure_exam_can_delete(db: Session, exam_id: int) -> None:
+    if db.query(Question.id).filter(Question.exam_id == exam_id).first():
+        raise _conflict("exam has questions and cannot be deleted")
+    if db.query(StudentExamScore.id).filter(StudentExamScore.exam_id == exam_id).first():
+        raise _conflict("exam has student scores and cannot be deleted")
+    if db.query(AnalysisRun.id).filter(AnalysisRun.exam_id == exam_id).first():
+        raise _conflict("exam is referenced by analysis runs and cannot be deleted")
+
+
+def _ensure_question_can_delete(db: Session, question_id: int) -> None:
+    if db.query(StudentQuestionScore.id).filter(StudentQuestionScore.question_id == question_id).first():
+        raise _conflict("question has student scores and cannot be deleted")

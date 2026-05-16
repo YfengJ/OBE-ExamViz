@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CourseBase(BaseModel):
@@ -8,6 +8,7 @@ class CourseBase(BaseModel):
     department: str
     major: str
     credit: float = 0.0
+    owner: str | None = None
     description: str | None = None
 
 
@@ -22,11 +23,11 @@ class CourseUpdate(BaseModel):
     department: str | None = None
     major: str | None = None
     credit: float | None = None
+    owner: str | None = None
     description: str | None = None
 
 
 class CourseResponse(CourseBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

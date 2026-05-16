@@ -1,0 +1,7 @@
+qno,qtype,qgroup_name,sub_qno,score,section,knowledge_point,co_code,indicator_code,co_weight,expected_threshold
+1,单选题,单选题,,10,第1章,示例基础概念,CO1,IND1,0.15,0.65
+2,单选题,单选题,,10,第2章,示例核心知识,CO1,IND1,0.15,0.65
+3,填空题,填空题,,15,第3章,示例关键方法,CO2,IND2,0.2,0.65
+4,简答题,简答题,,15,第4章,示例过程分析,CO2,IND2,0.2,0.65
+5,综合题,综合题,5-1,25,第5章,示例综合应用,CO3,IND3,0.15,0.65
+6,综合题,综合题,6-1,25,第6章,示例迁移优化,CO4,IND4,0.15,0.65

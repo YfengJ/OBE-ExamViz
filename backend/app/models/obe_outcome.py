@@ -11,6 +11,8 @@ class OBEOutcome(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     co_code = Column(String, nullable=False)
     co_name = Column(String, nullable=False)
+    indicator = Column(String, nullable=True)
+    description = Column(String, nullable=True)
     threshold = Column(Float, default=0.6)
 
     course = relationship("Course", back_populates="obe_outcomes")

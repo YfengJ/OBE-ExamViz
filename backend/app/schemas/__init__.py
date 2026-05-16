@@ -1,3 +1,4 @@
+from backend.app.schemas.analysis_run import AnalysisRunCreate, AnalysisRunNarrative, AnalysisRunOverview, AnalysisRunResponse
 from backend.app.schemas.analysis import OBEAchievementItem, QuestionAnalysisItem, ScoreStatsResponse
 from backend.app.schemas.course import CourseCreate, CourseResponse, CourseUpdate
 from backend.app.schemas.exam import ExamCreate, ExamResponse, ExamUpdate
@@ -11,6 +12,10 @@ from backend.app.schemas.warning import (
 )
 
 __all__ = [
+    "AnalysisRunCreate",
+    "AnalysisRunNarrative",
+    "AnalysisRunOverview",
+    "AnalysisRunResponse",
     "CourseCreate",
     "CourseResponse",
     "CourseUpdate",

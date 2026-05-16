@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.models.course import Course
 from backend.app.models.exam import Exam
 from backend.app.models.obe_outcome import OBEOutcome
@@ -261,7 +262,10 @@ def obe_achievement(db: Session, course_id: int, exam_id: int | None = None) -> 
     return sorted(result, key=lambda item: item["co_code"])
 
 
-def ensure_seed_data_for_demo(db: Session) -> None:
+def ensure_seed_data_for_demo(db: Session, force: bool = False) -> None:
+    if not force and not settings.AUTO_SEED_DEMO_DATA:
+        return
+
     students_file = SAMPLE_DIR / "students.csv"
     courses_file = SAMPLE_DIR / "courses.csv"
     exams_file = SAMPLE_DIR / "exams.csv"

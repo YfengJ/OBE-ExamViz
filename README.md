@@ -1,17 +1,52 @@
-﻿# OBE-ExamViz — 基于 OBE 理念的期末试卷分析与成绩可视化系统
+# 基于 OBE 的期末试卷分析与成绩可视化系统
 
-一个面向高校教师和教务管理人员的全栈 Web 应用，围绕成果导向教育（OBE）理念，提供从成绩录入、多维统计分析、课程目标达成度评估到学业预警干预的一体化解决方案。
+面向高校教师的毕设项目，核心目标是把“简洁成绩输入模板 -> 试卷结构映射 -> OBE 达成度分析 -> 期末试卷分析表导出”串成一条完整工作流。当前版本以“分析任务（Analysis Run）”为中心，输入端只保留系统生成报告必需的原始数据，输出端对齐正式 Word 试卷分析表。
 
----
+## 当前完成度
 
-## 功能亮点
+- 已支持以“课程 + 班级 + 一次期末考试”为单位创建分析任务
+- 已支持导入简洁成绩输入模板，包含基本信息、试卷结构、课程目标和学生逐题得分
+- 已实现成绩统计、分数段分布、题型平均得分、逐题得分率、课程目标达成度、规则预警
+- 已支持 DeepSeek 生成“持续改进建议”文本
+- 已支持导出 Word 版试卷分析文档，内容结构参考老师提供的“试卷分析表”模板
+- 已支持上传简洁输入模板，一键创建分析任务、计算达成度并生成正式报告
 
-- 学生 / 课程 / 考试 / 题目的结构化管理，支持 CSV / Excel 批量导入
-- 成绩统计：人数、均分、最高分、最低分、及格率、五段分布直方图
-- 题目分析：逐题难度系数、区分度、得分率
-- OBE 达成度：按课程目标（CO）自动聚合计算，与设定阈值可视化对比
-- 学业预警：基于规则自动识别学习困难学生，集成 DeepSeek AI 生成个性化诊断报告
-- 一键导出全中文表头的 Excel 成绩分析报表
+## 核心工作流
+
+1. 下载并填写 `teacher_input_template.xlsx`
+2. 在“数据导入”页上传成绩输入模板
+3. 点击“开始计算”，查看：
+   - 平均分 / 及格率 / 难度标签
+   - 分数段图表
+   - 题型平均得分率
+   - 课程目标平均分和达成度
+   - 逐题分析
+4. 在“报告预览”页生成报告正文
+5. 在“AI 建议”页生成：
+   - 成绩统计摘要
+   - 课程目标支撑度分析
+   - 课程目标达成度分析
+   - 教学持续改进建议
+6. 导出 Word 版试卷分析文档
+
+## 系统输入输出设计
+
+### 输入：简洁成绩输入模板
+
+- 输入：
+  - `基本信息`
+  - `试卷结构`
+  - `课程目标`
+  - `学生成绩`
+- 中间处理：
+  - 统一落入 `AnalysisRun`
+  - 形成规范化的学生、考试、题目、课程目标和逐题得分数据
+  - 自动计算总分、平均分、分数段、题型表现和课程目标达成度
+- 输出：
+  - 分析页图表
+  - 课程目标达成度表
+  - 预警建议
+  - Word 分析文档
 
 ## 技术栈
 
@@ -19,82 +54,71 @@
 |------|------|
 | 前端 | Vue 3 + Vite + Element Plus + ECharts |
 | 后端 | Python 3.10+ / FastAPI / SQLAlchemy / Pandas / NumPy |
-| 数据库 | SQLite（开箱即用，可平滑切换 PostgreSQL / MySQL） |
-| AI 能力 | DeepSeek API（OpenAI 兼容接口） |
-
-## 界面预览
-
-### 首页仪表盘
-![首页仪表盘](前端界面截图/home.png)
-
-### 学生管理
-![学生管理](前端界面截图/students.png)
-
-### 课程管理
-![课程管理](前端界面截图/courses.png)
-
-### 考试与试题管理
-![考试与试题管理](前端界面截图/exams.png)
-
-### 成绩分析中心
-![成绩分析中心](前端界面截图/analysis.png)
-
-### 学业预警中心
-![学业预警中心](前端界面截图/warnings.png)
+| 数据库 | SQLite（默认）/ PostgreSQL（可切换） |
+| AI | DeepSeek API（OpenAI 兼容风格） |
+| 报表 | openpyxl / CSV / XLSX |
 
 ## 目录结构
 
+```text
+repo/
+  backend/
+    app/
+      api/
+      core/
+      db/
+      models/
+      schemas/
+      services/
+      analysis/
+      ai/
+      reports/
+      utils/
+      main.py
+    tests/
+    scripts/
+    requirements.txt
+    .env.example
+    README_BACKEND.md
+  frontend/
+    src/
+      api/
+      router/
+      views/
+      components/
+      stores/
+      utils/
+      main.ts
+    index.html
+    vite.config.ts
+    package.json
+    README_FRONTEND.md
+  docs/
+  sample_data/
+  .gitignore
+  README.md
 ```
-├── backend/          # FastAPI 后端服务
-│   ├── app/
-│   │   ├── api/      # 路由与接口定义
-│   │   ├── models/   # SQLAlchemy 数据模型
-│   │   ├── schemas/  # Pydantic 请求/响应模型
-│   │   ├── services/ # 业务逻辑层（分析、预警、导入）
-│   │   ├── reports/  # Excel 报表生成
-│   │   └── ai/       # DeepSeek AI 集成
-│   └── requirements.txt
-├── frontend/         # Vue 3 前端应用
-│   ├── src/
-│   │   ├── views/    # 页面视图组件
-│   │   ├── components/ # 图表等通用组件
-│   │   ├── api/      # 接口封装
-│   │   └── styles/   # 全局样式体系
-│   └── package.json
-├── sample_data/      # 演示数据（2 个班级，60 名学生）
-├── docs/             # 项目文档（需求、架构、数据库、API 等）
-├── 前端界面截图/      # 系统各页面截图
-└── README.md
-```
 
-## 快速开始
+## 一键启动
 
-### 1. 克隆仓库
+必须在项目根目录运行后端。
 
-```bash
-git clone https://github.com/你的用户名/OBE-ExamViz.git
-cd OBE-ExamViz
-```
-
-### 2. 启动后端
+### 1. 启动后端
 
 ```bash
 python -m venv .venv
 
 # Windows
 .venv\Scripts\activate
+
 # macOS / Linux
 source .venv/bin/activate
 
 pip install -r backend/requirements.txt
-
-# 在项目根目录下运行
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-> 注意：必须在项目根目录（包含 backend/ 文件夹的那一层）运行 uvicorn，否则会出现 ModuleNotFoundError。
-
-### 3. 启动前端（新终端窗口）
+### 2. 启动前端
 
 ```bash
 cd frontend
@@ -102,52 +126,72 @@ npm install
 npm run dev
 ```
 
-启动完成后：
-- 前端界面：http://localhost:5173
-- 后端 API 文档：http://localhost:8000/docs
+### 3. 打开地址
 
-### 4. 体验流程
+- 前端工作台: [http://localhost:5173](http://localhost:5173)
+- 后端 Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-1. 系统会自动加载 `sample_data/` 中的演示数据
-2. 在"分析中心"选择课程和考试，查看统计图表与 OBE 达成度
-3. 在"预警中心"生成学业预警并触发 AI 诊断报告
-4. 点击"导出报告"下载中文表头的 Excel 分析报表
+## DeepSeek API 配置
 
-## 演示数据说明
+复制根目录或 `backend/` 下的 `.env.example` 为 `.env`，然后填写：
 
-| 文件 | 内容 |
-|------|------|
-| students.csv | 60 名学生基本信息（学号、班级、专业） |
-| courses.csv | 课程信息 |
-| exams.csv | 考试安排 |
-| exam_scores.csv | 期末总分 |
-| questions.csv | 试卷题目结构（题型、分值、知识点、CO 映射） |
-
-## 环境变量配置
-
-复制 `.env.example` 为 `.env` 并填写：
-
-```
-DEEPSEEK_API_KEY=你的DeepSeek API密钥
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_API_BASE=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat
+AUTO_SEED_DEMO_DATA=false
 ```
 
-不配置 API Key 不影响核心分析功能，仅 AI 诊断报告功能不可用。
+未配置 API Key 时，系统会退回规则生成的默认建议文本，不影响主要演示流程。
+也就是说，“AI 建议”按钮始终可用，但只有配置了真实 key 才会得到 DeepSeek 增强结果。
 
-## 项目文档
+## 演示数据
 
-完整的技术文档位于 `docs/` 目录：
+`sample_data/` 已提供 2 个班级、60 名学生、6 门课程的可公开模拟数据；正式输入模板位于 `backend/templates/teacher_input_template.xlsx`。
 
-- 01 调研背景
-- 02 需求分析
-- 03 系统架构设计
-- 04 数据库设计
-- 05 分析指标与算法
-- 06 API 接口文档
-- 07 测试方案
-- 08 部署指南
-- 10 用户使用手册
-- 11 总结与展望
+- `students.csv`
+- `courses.csv`
+- `exams.csv`
+- `exam_scores.csv`
+- `questions.csv`
+- `question_scores.csv`
+- `usual_scores_template.csv`
+- `midterm_scores_template.csv`
+- `final_scores_template.csv`
+- `paper_structure_template.csv`
+- `question_scores_template.csv`
+- `backend/templates/teacher_input_template.xlsx`
 
-## License
+## 主要页面说明
 
-MIT
+- `分析任务`：创建并切换老师视角的分析批次
+- `课程参数`：维护课程、考试、题目等基础对象
+- `数据导入`：下载简洁输入模板，上传基本信息、试卷结构、课程目标和学生逐题得分
+- `结构分析`：查看统计图表、题目分析和课程目标达成度
+- `报告预览`：生成报告正文并导出 Word 文档
+- `改进建议`：查看规则预警与 AI 生成的分析文字
+
+## 文档索引
+
+- `/docs/02_requirements.md`
+- `/docs/03_architecture.md`
+- `/docs/04_database.md`
+- `/docs/05_metrics_methods.md`
+- `/docs/06_api.md`
+- `/docs/08_deployment.md`：包含“压缩拷贝到另一台电脑后如何运行”的完整部署教程
+- `/docs/09_github_workflow.md`
+- `/docs/10_user_manual.md`
+- `/docs/assumptions.md`
+
+## 注意事项
+
+- 后端启动命令必须在项目根目录执行，否则会出现 `ModuleNotFoundError: No module named 'backend'`
+- 示例数据默认匿名，`name` 字段允许为空
+- AI 分析默认只使用学号或匿名 ID，不向大模型发送姓名
+
+## 下一阶段可扩展项
+
+1. 直接解析教师现有“宽表”Excel 成绩单
+2. 导出 `.docx` 格式试卷分析表
+3. 增加 Alembic 正式迁移
+4. 增加 GitHub Actions CI

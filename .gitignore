@@ -28,24 +28,41 @@ Thumbs.db
 # Database
 *.sqlite3
 *.db
+*.sqlite
+obe_analysis.db
 
 # Logs / temp
 *.log
 tmp/
 temp/
+output/
+data/
+.playwright-cli/
+.run/
+
+# Local source documents and score workbooks
+*.docx
+*.xls
+*.xlsx
+*.xlsm
+!backend/templates/*.docx
+!backend/templates/*.xlsx
 
 # TypeScript build cache
 *.tsbuildinfo
-
-# Docs (kept locally, not uploaded)
-docs/
 
 # Misc build / temp directories
 docx/
 pptx_builder/
 temp_ppt_env/
-scripts/
-tasks/
+/scripts/
+/tasks/
+/task_plan.md
+/progress.md
+/findings.md
+/CHECKLIST.md
+frontend/node_modules_windows_backup/
+/前端界面截图/
 
 # Claude / Gemini agent artifacts
 .claude/
