@@ -2,6 +2,11 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/YfengJ/OBE-ExamViz/actions/workflows/ci.yml/badge.svg)](https://github.com/YfengJ/OBE-ExamViz/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](backend/requirements.txt)
+[![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](frontend/package.json)
+
 OBE-ExamViz is an Outcome-Based Education (OBE) exam analysis system for college instructors. It turns a simplified score workbook into course outcome attainment analysis, AI-assisted teaching suggestions, and a Word exam-analysis report.
 
 The project was built as a graduation project and is designed for local deployment, classroom-scale data processing, and privacy-aware report generation.
@@ -156,6 +161,10 @@ Relevant ignored locations include `data/`, `output/`, `tmp/`, local databases, 
 - Input template: `backend/templates/teacher_input_template.xlsx`
 - Word report template: `backend/templates/teacher_report_template.docx`
 - Teacher-facing deployment guide: [docs/部署与使用说明.md](docs/部署与使用说明.md)
+- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Roadmap: [ROADMAP.md](ROADMAP.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Delivery checklist: [CHECKLIST.md](CHECKLIST.md)
 - Chinese README: [README.zh-CN.md](README.zh-CN.md)
 

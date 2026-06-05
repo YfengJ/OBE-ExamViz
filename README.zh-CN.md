@@ -2,6 +2,11 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/YfengJ/OBE-ExamViz/actions/workflows/ci.yml/badge.svg)](https://github.com/YfengJ/OBE-ExamViz/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](backend/requirements.txt)
+[![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](frontend/package.json)
+
 OBE-ExamViz 是面向高校教师的 OBE 期末试卷分析系统，核心目标是把“简洁成绩输入 -> 课程目标达成度计算 -> AI 辅助改进建议 -> Word 试卷分析表导出”串成一条完整工作流。
 
 当前版本强调本地部署、隐私保护和可交付性：系统源码可以公开维护，但 API Key、数据库、真实成绩文件、真实教学大纲和历史导出报告不应进入仓库。
@@ -156,6 +161,10 @@ AUTO_SEED_DEMO_DATA=false
 - 成绩输入模板：`backend/templates/teacher_input_template.xlsx`
 - Word 报告模板：`backend/templates/teacher_report_template.docx`
 - 给老师部署说明：[docs/部署与使用说明.md](docs/部署与使用说明.md)
+- 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
+- 安全说明：[SECURITY.md](SECURITY.md)
+- 维护路线图：[ROADMAP.md](ROADMAP.md)
+- 更新日志：[CHANGELOG.md](CHANGELOG.md)
 - 交付检查清单：[CHECKLIST.md](CHECKLIST.md)
 - 英文 README：[README.md](README.md)
 
