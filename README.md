@@ -16,6 +16,22 @@ The project was built as a graduation project and is designed for local deployme
 - **Word report export**: exports a formal exam-analysis document from the system-calculated result snapshot.
 - **Delivery friendly**: the repository excludes local databases, API keys, private score files, real syllabi, generated reports, and dependency folders.
 
+## Screenshots
+
+The screenshots below were captured from a temporary demo database and contain only public placeholder data such as demo courses, demo classes, and demo teachers.
+
+| Workbench | Course Parameters |
+| --- | --- |
+| ![Analysis workbench](docs/assets/screenshots/home-workbench.png) | ![Course parameters](docs/assets/screenshots/course-parameters.png) |
+
+| Data Import | Structure Analysis |
+| --- | --- |
+| ![Data import center](docs/assets/screenshots/data-import.png) | ![Structure analysis](docs/assets/screenshots/structure-analysis.png) |
+
+| Report Preview |
+| --- |
+| ![Report preview](docs/assets/screenshots/report-preview.png) |
+
 ## Workflow
 
 1. Create or select a course.

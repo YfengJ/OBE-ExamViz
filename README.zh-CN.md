@@ -16,6 +16,22 @@ OBE-ExamViz 是面向高校教师的 OBE 期末试卷分析系统，核心目标
 - **Word 报告导出**：将系统计算结果和已生成建议写入正式试卷分析文档。
 - **交付友好**：默认排除本地数据库、真实数据、输出文件、依赖目录和环境变量文件。
 
+## 界面截图
+
+以下截图来自临时演示数据库，只包含示例课程、示例班级、示例教师等公开占位数据，不包含真实学生、真实成绩、真实大纲或 API Key。
+
+| 分析工作台 | 课程参数 |
+| --- | --- |
+| ![分析工作台](docs/assets/screenshots/home-workbench.png) | ![课程参数](docs/assets/screenshots/course-parameters.png) |
+
+| 数据导入 | 结构分析 |
+| --- | --- |
+| ![数据导入中心](docs/assets/screenshots/data-import.png) | ![结构分析](docs/assets/screenshots/structure-analysis.png) |
+
+| 报告预览 |
+| --- |
+| ![报告预览](docs/assets/screenshots/report-preview.png) |
+
 ## 使用流程
 
 1. 创建或选择已有课程。
