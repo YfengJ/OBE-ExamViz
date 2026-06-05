@@ -14,7 +14,7 @@ from backend.app.reports.teacher_template_report import (
     build_teacher_template_report_with_ai,
     preview_teacher_template_workbook,
 )
-from backend.app.services.analysis_run_service import refresh_all_analysis_runs, refresh_analysis_run
+from backend.app.services.analysis_run_service import invalidate_run_generated_content, refresh_all_analysis_runs, refresh_analysis_run
 from backend.app.services.import_service import (
     import_component_scores,
     import_final_scores,
@@ -77,6 +77,7 @@ def import_usual_scores_file(
 ):
     result = import_component_scores(db, file, component_name="usual", default_weight=0.2, run_id=run_id, course_id=course_id)
     if run_id:
+        invalidate_run_generated_content(db, run_id, include_ai=True)
         refresh_analysis_run(db, run_id)
     return ok(result)
 
@@ -90,6 +91,7 @@ def import_midterm_scores_file(
 ):
     result = import_component_scores(db, file, component_name="midterm", default_weight=0.2, run_id=run_id, course_id=course_id)
     if run_id:
+        invalidate_run_generated_content(db, run_id, include_ai=True)
         refresh_analysis_run(db, run_id)
     return ok(result)
 
@@ -104,6 +106,7 @@ def import_final_scores_file(
 ):
     result = import_final_scores(db, file, run_id=run_id, exam_id=exam_id, course_id=course_id)
     if run_id:
+        invalidate_run_generated_content(db, run_id, include_ai=True)
         refresh_analysis_run(db, run_id)
     return ok(result)
 
@@ -117,6 +120,7 @@ def import_paper_structure_file(
 ):
     result = import_paper_structure(db, file, run_id=run_id, exam_id=exam_id)
     if run_id:
+        invalidate_run_generated_content(db, run_id, include_ai=True)
         refresh_analysis_run(db, run_id)
     return ok(result)
 
@@ -130,6 +134,7 @@ def import_question_scores_file(
 ):
     result = import_question_scores(db, file, run_id=run_id, exam_id=exam_id)
     if run_id:
+        invalidate_run_generated_content(db, run_id, include_ai=True)
         refresh_analysis_run(db, run_id)
     return ok(result)
 
@@ -164,8 +169,11 @@ def import_teacher_workbook_preview(
 def import_teacher_workbook_task(
     file: UploadFile = File(...),
     exam_date: str | None = Form(default=None),
+    preview_confirmed: bool = Form(default=False),
     db: Session = Depends(get_db),
 ):
     if not (file.filename or "").lower().endswith((".xlsx", ".xls", ".xlsm")):
         raise HTTPException(status_code=400, detail="Only XLSX/XLS/XLSM files are supported")
+    if not preview_confirmed:
+        raise HTTPException(status_code=400, detail="请先完成文件预览确认，再导入并创建分析任务")
     return ok(import_teacher_workbook_as_run(db, file, exam_date_override=exam_date))

@@ -386,7 +386,7 @@ def test_teacher_workbook_task_report_uses_syllabus_course_metadata_and_outcomes
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
-            data={"exam_date": "2026-01-10"},
+            data={"exam_date": "2026-01-10", "preview_confirmed": "true"},
         )
         assert import_response.status_code == 200
         run_id = import_response.json()["data"]["run_overview"]["run"]["id"]
@@ -417,6 +417,7 @@ def test_simple_input_workbook_task_builds_run_from_raw_inputs_only() -> None:
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
+            data={"preview_confirmed": "true"},
         )
 
         assert response.status_code == 200
@@ -436,6 +437,24 @@ def test_simple_input_workbook_task_builds_run_from_raw_inputs_only() -> None:
     assert analysis_group["achievement"] == 0.8
 
 
+def test_teacher_workbook_task_requires_preview_confirmation() -> None:
+    workbook_bytes = _build_simple_input_workbook()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/import/teacher-workbook-task",
+            files={
+                "file": (
+                    "未确认导入.xlsx",
+                    workbook_bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+    assert response.status_code == 400
+    assert "预览确认" in response.json()["detail"]
+
+
 def test_simple_input_task_preserves_per_question_outcome_and_goal_text() -> None:
     workbook_bytes = _build_cross_target_simple_workbook()
     with TestClient(app) as client:
@@ -448,6 +467,7 @@ def test_simple_input_task_preserves_per_question_outcome_and_goal_text() -> Non
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
+            data={"preview_confirmed": "true"},
         )
 
         assert response.status_code == 200
@@ -533,6 +553,7 @@ def test_simple_input_template_can_omit_goal_descriptions_after_syllabus_import(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
+            data={"preview_confirmed": "true"},
         )
 
         assert response.status_code == 200
@@ -658,7 +679,7 @@ def test_teacher_workbook_task_endpoint_creates_real_analysis_run() -> None:
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
-            data={"exam_date": "2025年6月22日"},
+            data={"exam_date": "2025年6月22日", "preview_confirmed": "true"},
         )
 
         assert response.status_code == 200
@@ -718,7 +739,7 @@ def test_teacher_workbook_task_removes_stale_orphan_students() -> None:
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },
-            data={"exam_date": "2025年6月22日"},
+            data={"exam_date": "2025年6月22日", "preview_confirmed": "true"},
         )
 
     assert response.status_code == 200

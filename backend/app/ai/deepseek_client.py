@@ -20,14 +20,13 @@ class DeepSeekClient:
 
     async def generate_warning_summary(self, anonymous_student_id: str, reasons: list[str]) -> str:
         if not self._api_key:
-            return f"Student {anonymous_student_id}: monitor learning status. Reasons: {', '.join(reasons)}."
+            return f"重点关注学生需要持续跟踪。原因：{', '.join(reasons)}。"
 
         return await self._chat(
             system_prompt="You are an education analytics assistant. Never output sensitive personal data.",
             user_prompt=(
-                f"Student ID: {anonymous_student_id}. "
-                f"Warning reasons: {', '.join(reasons)}. "
-                "Generate a concise learning-risk analysis and actionable guidance in Chinese."
+                f"某名重点关注学生的预警原因：{', '.join(reasons)}。"
+                "请生成一段简洁的中文学习风险分析和可执行帮扶建议，不要输出学号、姓名或任何可识别个人身份的信息。"
             ),
         )
 
@@ -35,14 +34,12 @@ class DeepSeekClient:
         if not self._api_key:
             return fallback_text
 
-        warning_text = "; ".join(
-            [f"{item['student_no']}:{'/'.join(item['reasons'])}" for item in warnings[:10]]
-        ) or "无重点预警学生"
+        warning_stats = self._warning_statistics(warnings)
         return await self._chat(
             system_prompt="You are an education quality analyst. Write concrete Chinese teaching improvement suggestions without sensitive personal data.",
             user_prompt=(
                 f"课程：{meta.get('course_name', '')}；班级：{meta.get('class_name', '')}；"
-                f"考试：{meta.get('exam_name', '')}；主要预警：{warning_text}。"
+                f"考试：{meta.get('exam_name', '')}；预警统计：{json.dumps(warning_stats, ensure_ascii=False)}。"
                 "请生成一段适合试卷分析表“教师对今后教学持续改进的具体意见”的中文文字，180字到260字。"
                 "内容要包含课堂讲评、分层辅导、阶段性检测和后续跟踪四类措施。"
             ),
@@ -77,7 +74,7 @@ class DeepSeekClient:
             "score_segments": score_segments,
             "question_groups": question_groups,
             "course_outcomes": course_outcomes,
-            "warnings": warnings[:10],
+            "warning_statistics": self._warning_statistics(warnings),
         }
         if suggestion_template == "per_outcome":
             improvement_requirement = (
@@ -124,6 +121,52 @@ class DeepSeekClient:
             return fallback_sections
         return normalized
 
+    def _warning_statistics(self, warnings: list[dict]) -> dict:
+        level_counts: dict[str, int] = {}
+        reason_counts: dict[str, int] = {}
+        final_scores: list[float] = []
+        course_total_scores: list[float] = []
+        for item in warnings or []:
+            level = str(item.get("level") or "warning")
+            level_counts[level] = level_counts.get(level, 0) + 1
+            for reason in item.get("reasons") or []:
+                reason_text = str(reason)
+                reason_counts[reason_text] = reason_counts.get(reason_text, 0) + 1
+            if item.get("final_score") is not None:
+                final_scores.append(self._safe_float(item.get("final_score")))
+            if item.get("course_total_score") is not None:
+                course_total_scores.append(self._safe_float(item.get("course_total_score")))
+
+        return {
+            "warning_count": len(warnings or []),
+            "level_counts": level_counts,
+            "reason_counts": reason_counts,
+            "lowest_final_score": min(final_scores) if final_scores else None,
+            "lowest_course_total_score": min(course_total_scores) if course_total_scores else None,
+        }
+
+    def _safe_float(self, value) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _redact_sensitive_text(self, text: str) -> str:
+        """Defense-in-depth guard before sending prompts to an external AI service."""
+        redacted = re.sub(
+            r'("?\b(?:student_no|student_name)\b"?\s*[:：]\s*)("[^"]+"|[^\s,，;；}]+)',
+            r"\1[已脱敏]",
+            text,
+            flags=re.IGNORECASE,
+        )
+        redacted = re.sub(
+            r'((?:学号|姓名)\s*[:：]\s*)("[^"]+"|[^\s,，;；}]+)',
+            r"\1[已脱敏]",
+            redacted,
+        )
+        redacted = re.sub(r"(?<!\d)\d{8,14}(?:\.0)?(?!\d)", "[已脱敏编号]", redacted)
+        return redacted
+
     async def _chat(self, system_prompt: str, user_prompt: str) -> str:
         payload = {
             "model": self._model,
@@ -134,7 +177,7 @@ class DeepSeekClient:
                 },
                 {
                     "role": "user",
-                    "content": user_prompt,
+                    "content": self._redact_sensitive_text(user_prompt),
                 },
             ],
             "temperature": 0.3,

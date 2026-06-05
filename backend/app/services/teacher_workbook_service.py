@@ -21,7 +21,7 @@ from backend.app.reports.teacher_template_report import (
     load_teacher_workbook_context,
     preview_teacher_template_workbook,
 )
-from backend.app.services.analysis_run_service import refresh_analysis_run
+from backend.app.services.analysis_run_service import invalidate_run_generated_content, refresh_analysis_run
 
 TEACHER_COURSE_PREFIX = "TCHR-"
 DEFAULT_DEPARTMENT = "计算机科学与技术系"
@@ -45,6 +45,7 @@ def import_teacher_workbook_as_run(
     _rebuild_final_scores(db, exam, context, student_map)
     _rebuild_question_scores(db, context, student_map, question_map)
     run = _upsert_run(db, course, exam, meta, context)
+    invalidate_run_generated_content(db, run.id, include_ai=True, commit=False)
     refresh_analysis_run(db, run.id)
     db.refresh(run)
 

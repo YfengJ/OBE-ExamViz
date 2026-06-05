@@ -177,6 +177,26 @@ export interface WarningPreview {
   reasons: string[]
 }
 
+export interface RunReadinessItem {
+  key: string
+  label: string
+  status: 'ready' | 'pending'
+  detail: string
+  path: string
+}
+
+export interface RunReadiness {
+  can_generate_report: boolean
+  blocking_errors: string[]
+  warnings: string[]
+  items: RunReadinessItem[]
+  next_action: {
+    label: string
+    path: string
+    kind: 'fix_data' | 'generate_report'
+  }
+}
+
 export interface RunNarrative {
   score_summary: string
   support_analysis: string
@@ -311,6 +331,7 @@ export interface DashboardPayload {
   }
   score_segments: SegmentRow[]
   difficulty_label: string
+  readiness: RunReadiness
   question_groups: QuestionGroupRow[]
   question_items: QuestionItem[]
   component_summary: ComponentSummaryRow[]
@@ -318,6 +339,14 @@ export interface DashboardPayload {
   course_outcome_chart: { co_code: string; threshold: number; achievement: number }[]
   student_outcomes: StudentOutcomeRow[]
   warnings: WarningPreview[]
+  data_quality: {
+    question_score_rows_expected: number
+    question_score_rows_actual: number
+    missing_question_score_rows: number
+    question_score_coverage: number
+    has_synthesized_question_scores: boolean
+    issues: string[]
+  }
   narrative_preview: RunNarrative
 }
 
@@ -441,9 +470,10 @@ export const importApi = {
     })
     return response as Blob
   },
-  teacherWorkbookTask: async (file: File, examDate?: string) => {
+  teacherWorkbookTask: async (file: File, examDate?: string, previewConfirmed = false) => {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('preview_confirmed', previewConfirmed ? 'true' : 'false')
     if (examDate?.trim()) {
       formData.append('exam_date', examDate.trim())
     }

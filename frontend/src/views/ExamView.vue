@@ -172,7 +172,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import WorkflowGuide from '../components/WorkflowGuide.vue'
 import { analysisRunApi, importApi, type AnalysisRunOverview, type InputRequirement, type TeacherWorkbookPreview, type TeacherWorkbookTaskResult } from '../api/modules/analysis'
@@ -332,9 +332,22 @@ async function importTeacherWorkbookTask() {
     ElMessage.warning('请先点击“开始计算”。')
     return
   }
+  try {
+    await ElMessageBox.confirm(
+      '请确认预览中的课程、班级、学生数、题型和课程目标识别无误。确认后系统才会保存本次数据并创建分析任务。',
+      '确认导入',
+      {
+        type: 'warning',
+        confirmButtonText: '确认导入',
+        cancelButtonText: '返回检查',
+      }
+    )
+  } catch {
+    return
+  }
   importLoading.value = true
   try {
-    const result: TeacherWorkbookTaskResult = await importApi.teacherWorkbookTask(teacherWorkbookFile.value, teacherExamDate.value)
+    const result: TeacherWorkbookTaskResult = await importApi.teacherWorkbookTask(teacherWorkbookFile.value, teacherExamDate.value, true)
     await loadRuns()
     selectedRunId.value = result.run_overview.run.id
     syncRoute()

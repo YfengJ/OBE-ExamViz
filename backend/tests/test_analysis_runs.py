@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import date
 from io import BytesIO
 
@@ -16,12 +18,19 @@ from backend.app.models.course import Course
 from backend.app.models.exam import Exam
 from backend.app.models.generated_content import GeneratedContent
 from backend.app.models.obe_outcome import OBEOutcome
+from backend.app.models.question import Question
+from backend.app.models.student import Student
+from backend.app.models.student_exam_score import StudentExamScore
+from backend.app.models.student_question_score import StudentQuestionScore
 from backend.app.reports.teacher_template_report import _student_outcome_rows_for_target
 from backend.app.services.analysis_run_service import (
     AI_SUGGESTION_CONTENT,
     AI_SUGGESTION_MARKER,
+    REPORT_CONTEXT_SNAPSHOT_CONTENT,
     _build_rule_based_narrative,
+    _sanitize_report_narrative,
     ensure_teacher_demo_data,
+    get_run_export_context,
 )
 
 
@@ -52,6 +61,101 @@ def _clear_generated_content(run_id: int) -> None:
         db.close()
 
 
+def _create_run_without_question_scores(include_question_scores: bool = False) -> int:
+    db = SessionLocal()
+    try:
+        suffix = db.query(Course).filter(Course.course_code.like("TRUST-NO-QS%")).count() + 1
+        course_code = f"TRUST-NO-QS-{suffix}"
+        class_name = f"可信测试班{suffix}"
+        course = Course(
+            course_code=course_code,
+            course_name="可信性测试课程",
+            term="2025-2026-1",
+            department="计算机科学与技术系",
+            major="示例专业",
+            credit=2,
+            owner="示例负责人",
+            description="用于验证缺失逐题得分时不合成分析结果。",
+        )
+        db.add(course)
+        db.flush()
+        exam = Exam(
+            course_id=course.id,
+            exam_type="final",
+            name="可信性测试课程期末考试",
+            date=date(2026, 1, 10),
+            total_score=100,
+        )
+        db.add(exam)
+        db.flush()
+        db.add_all(
+            [
+                OBEOutcome(
+                    course_id=course.id,
+                    co_code="CO1",
+                    co_name="课程目标1",
+                    indicator="指标点1-1",
+                    description="掌握可信性测试课程的基础概念。",
+                    threshold=0.65,
+                ),
+                OBEOutcome(
+                    course_id=course.id,
+                    co_code="CO2",
+                    co_name="课程目标2",
+                    indicator="指标点2-1",
+                    description="能够完成可信性测试课程的问题分析。",
+                    threshold=0.65,
+                ),
+            ]
+        )
+        questions = [
+            Question(exam_id=exam.id, qno="1", qtype="选择题", qgroup_name="选择题", score=40, co_code="CO1"),
+            Question(exam_id=exam.id, qno="2", qtype="综合题", qgroup_name="综合题", score=60, co_code="CO2"),
+        ]
+        db.add_all(questions)
+        students = [
+            Student(student_no=f"990{suffix:04d}1", name="学生甲", class_name=class_name, major="示例专业", grade_year="2025"),
+            Student(student_no=f"990{suffix:04d}2", name="学生乙", class_name=class_name, major="示例专业", grade_year="2025"),
+        ]
+        db.add_all(students)
+        db.flush()
+        db.add_all(
+            [
+                StudentExamScore(student_id=students[0].id, exam_id=exam.id, total_score=88),
+                StudentExamScore(student_id=students[1].id, exam_id=exam.id, total_score=76),
+            ]
+        )
+        if include_question_scores:
+            db.add_all(
+                [
+                    StudentQuestionScore(student_id=students[0].id, question_id=questions[0].id, score=36),
+                    StudentQuestionScore(student_id=students[0].id, question_id=questions[1].id, score=52),
+                    StudentQuestionScore(student_id=students[1].id, question_id=questions[0].id, score=30),
+                    StudentQuestionScore(student_id=students[1].id, question_id=questions[1].id, score=46),
+                ]
+            )
+        run = AnalysisRun(
+            course_id=course.id,
+            exam_id=exam.id,
+            class_name=class_name,
+            academic_year="2025-2026学年第一学期",
+            term_label="2025-2026-1",
+            teacher_name="示例教师",
+            department="计算机科学与技术系",
+            major="示例专业",
+            exam_date=date(2026, 1, 10),
+            student_count_expected=2,
+            student_count_actual=2,
+            status="ready" if include_question_scores else "partial",
+        )
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+        return run.id
+    finally:
+        db.close()
+
+
 def test_analysis_runs_list_and_dashboard() -> None:
     with TestClient(app) as client:
         run = _first_run(client)
@@ -64,6 +168,73 @@ def test_analysis_runs_list_and_dashboard() -> None:
         assert dashboard["score_stats"]["total_students"] >= 0
         assert "course_outcomes" in dashboard
         assert "warnings" in dashboard
+
+
+def test_analysis_run_does_not_synthesize_missing_question_scores() -> None:
+    with TestClient(app) as client:
+        run_id = _create_run_without_question_scores()
+        response = client.get(f"/api/v1/analysis-runs/{run_id}/dashboard")
+
+    assert response.status_code == 200
+    dashboard = response.json()["data"]
+    assert dashboard["course_outcomes"] == []
+    assert dashboard["student_outcomes"] == []
+    assert dashboard["data_quality"]["question_score_rows_actual"] == 0
+    assert dashboard["data_quality"]["missing_question_score_rows"] == 4
+    assert dashboard["data_quality"]["has_synthesized_question_scores"] is False
+    assert any("逐题得分" in issue for issue in dashboard["data_quality"]["issues"])
+    assert dashboard["readiness"]["can_generate_report"] is False
+    assert "逐题得分" in dashboard["readiness"]["next_action"]["label"]
+    assert dashboard["readiness"]["next_action"]["path"] == "/exams"
+
+
+def test_analysis_run_dashboard_readiness_allows_complete_report_generation() -> None:
+    with TestClient(app) as client:
+        run_id = _create_run_without_question_scores(include_question_scores=True)
+        response = client.get(f"/api/v1/analysis-runs/{run_id}/dashboard")
+
+    assert response.status_code == 200
+    readiness = response.json()["data"]["readiness"]
+    assert readiness["can_generate_report"] is True
+    assert readiness["blocking_errors"] == []
+    assert readiness["next_action"]["path"] == "/report-preview"
+    assert any(item["key"] == "question_scores" and item["status"] == "ready" for item in readiness["items"])
+
+
+def test_docx_export_blocks_when_required_data_is_missing() -> None:
+    with TestClient(app) as client:
+        run_id = _create_run_without_question_scores()
+        response = client.get(f"/api/v1/analysis-runs/{run_id}/export/docx")
+
+    assert response.status_code == 400
+    assert "逐题得分" in response.json()["detail"]
+
+
+def test_report_export_context_is_snapshotted_after_first_build() -> None:
+    with TestClient(app) as client:
+        run_id = _create_run_without_question_scores(include_question_scores=True)
+    _clear_generated_content(run_id)
+    db = SessionLocal()
+    try:
+        first_context = get_run_export_context(db, run_id)
+        course = db.query(Course).filter(Course.id == first_context["run"]["course_id"]).first()
+        assert course is not None
+        original_name = first_context["meta"]["course_name"]
+        course.course_name = "导出后被修改的课程名称"
+        db.commit()
+
+        second_context = get_run_export_context(db, run_id)
+        snapshot = (
+            db.query(GeneratedContent)
+            .filter(GeneratedContent.run_id == run_id, GeneratedContent.content_type == REPORT_CONTEXT_SNAPSHOT_CONTENT)
+            .first()
+        )
+    finally:
+        db.close()
+
+    assert snapshot is not None
+    assert second_context["meta"]["course_name"] == original_name
+    assert second_context["meta"]["course_name"] != "导出后被修改的课程名称"
 
 
 def test_rule_based_paper_suggestion_is_detailed_and_actionable() -> None:
@@ -109,6 +280,97 @@ def test_rule_based_paper_suggestion_is_detailed_and_actionable() -> None:
     assert "建模题" in suggestion
     assert "1）" in suggestion and "4）" in suggestion
     assert "阶段性" in suggestion
+
+
+def test_deepseek_report_prompt_uses_anonymized_warning_statistics(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    async def fake_chat(self, system_prompt: str, user_prompt: str) -> str:
+        captured["user_prompt"] = user_prompt
+        return json.dumps(
+            {
+                "score_summary": "AI 成绩统计摘要",
+                "support_analysis": "AI 支撑度分析",
+                "attainment_analysis": "AI 达成度分析",
+                "improvement_actions": "AI 持续改进建议",
+            },
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(DeepSeekClient, "_chat", fake_chat)
+
+    client = DeepSeekClient()
+    asyncio.run(
+        client.generate_report_narrative(
+            meta={"course_name": "示例课程A", "class_name": "示例班级A", "exam_name": "期末考试"},
+            score_stats={"total_students": 2, "average_score": 70, "max_score": 90, "min_score": 50, "pass_rate": 0.5},
+            score_segments=[],
+            question_groups=[],
+            course_outcomes=[],
+            warnings=[
+                {
+                    "student_no": "9900001",
+                    "student_name": "学生甲",
+                    "final_score": 50,
+                    "course_total_score": 58,
+                    "level": "critical",
+                    "reasons": ["期末卷面成绩低于60分"],
+                }
+            ],
+            fallback_sections={
+                "score_summary": "fallback",
+                "support_analysis": "fallback",
+                "attainment_analysis": "fallback",
+                "improvement_actions": "fallback",
+            },
+        )
+    )
+
+    prompt = captured["user_prompt"]
+    assert "9900001" not in prompt
+    assert "学生甲" not in prompt
+    assert "warning_count" in prompt
+    assert "期末卷面成绩低于60分" in prompt
+
+
+def test_deepseek_client_redacts_sensitive_prompt_text() -> None:
+    client = DeepSeekClient()
+    prompt = client._redact_sensitive_text(
+        'student_no: 20231103101, student_name: 张三, 学号：20231103102 姓名：李四。课程代码 CS101。'
+    )
+
+    assert "20231103101" not in prompt
+    assert "20231103102" not in prompt
+    assert "张三" not in prompt
+    assert "李四" not in prompt
+    assert "CS101" in prompt
+
+
+def test_report_narrative_redacts_student_identifiers_from_cached_text() -> None:
+    context = {
+        "warnings": [
+            {"student_no": "20251106205", "student_name": "俞入洋"},
+            {"student_no": "20251106207", "student_name": "郭金鑫"},
+        ],
+        "student_scores": [
+            {"student_no": "20251106209", "name": "刘庆铎"},
+        ],
+        "student_outcomes": [],
+    }
+    narrative = {
+        "improvement_actions": "对预警学生（如俞入洋、郭金鑫、20251106209等）进行一对一帮扶，并持续跟踪20251106205。",
+    }
+
+    sanitized = _sanitize_report_narrative(narrative, context)
+    text = sanitized["improvement_actions"]
+
+    assert "俞入洋" not in text
+    assert "郭金鑫" not in text
+    assert "刘庆铎" not in text
+    assert "20251106205" not in text
+    assert "20251106209" not in text
+    assert "重点关注学生" in text
 
 
 def test_analysis_run_data_lineage_explains_input_output_sources() -> None:

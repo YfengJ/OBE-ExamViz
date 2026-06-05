@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -89,6 +89,7 @@ def analysis_run_export_excel(run_id: int, db: Session = Depends(get_db)):
     context = get_run_export_context(db, run_id)
     if not context:
         raise not_found("analysis_run", run_id)
+    _ensure_export_context_ready(context)
     content = build_analysis_run_workbook(context)
     filename = quote(f"试卷分析表_{context['meta']['class_name']}_{context['meta']['course_name']}.xlsx")
     return StreamingResponse(
@@ -103,6 +104,7 @@ async def analysis_run_export_docx(run_id: int, db: Session = Depends(get_db)):
     context = get_run_export_context(db, run_id)
     if not context:
         raise not_found("analysis_run", run_id)
+    _ensure_export_context_ready(context)
     content = await build_teacher_template_report_from_analysis_context_with_ai(context)
     filename = quote(f"试卷分析表_{context['meta']['class_name']}_{context['meta']['course_name']}.docx")
     return StreamingResponse(
@@ -126,3 +128,10 @@ def analysis_run_export_narrative_cache(run_id: int, db: Session = Depends(get_d
     if not data:
         raise not_found("analysis_run", run_id)
     return ok(data)
+
+
+def _ensure_export_context_ready(context: dict) -> None:
+    validation = context.get("export_validation") or {}
+    errors = validation.get("errors") or []
+    if errors:
+        raise HTTPException(status_code=400, detail="；".join(str(item) for item in errors))

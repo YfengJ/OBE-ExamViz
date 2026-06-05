@@ -87,6 +87,11 @@
             <span :class="{ ok: item.progress.has_questions }">试卷结构</span>
             <span :class="{ ok: item.run.status === 'ready' }">可生成报告</span>
           </div>
+          <div class="run-next">
+            <span>建议下一步</span>
+            <strong>{{ runNextAction(item).label }}</strong>
+            <el-button size="small" type="primary" plain @click="goWithRun(runNextAction(item).path, item.run.id)">继续</el-button>
+          </div>
           <div class="run-actions">
             <el-button text type="primary" @click="goWithRun('/exams', item.run.id)">数据导入</el-button>
             <el-button text type="success" @click="goWithRun('/analysis', item.run.id)">结构分析</el-button>
@@ -129,6 +134,19 @@ function goCreateCourse() {
 function goWithRun(path: string, runId: number) {
   appStore.selectedRunId = runId
   router.push({ path, query: { run: String(runId) } })
+}
+
+function runNextAction(item: AnalysisRunOverview) {
+  if (item.run.status === 'ready') {
+    return { label: '生成或核对报告', path: '/report-preview' }
+  }
+  if (!item.progress.has_final_scores) {
+    return { label: '导入学生成绩', path: '/exams' }
+  }
+  if (!item.progress.has_questions) {
+    return { label: '补齐试卷结构', path: '/exams' }
+  }
+  return { label: '补齐逐题得分并重新计算', path: '/exams' }
 }
 
 onMounted(loadRuns)
@@ -305,6 +323,27 @@ onMounted(loadRuns)
 .progress-list span.ok {
   background: rgba(16, 185, 129, 0.12);
   color: #047857;
+}
+
+.run-next {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0.7rem;
+  border-radius: var(--radius-lg);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.run-next span {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+.run-next strong {
+  color: var(--ink-title);
+  font-size: 0.92rem;
 }
 
 .run-actions {

@@ -12,7 +12,7 @@
           <el-select v-model="selectedRunId" style="width: 360px" @change="onRunChange">
             <el-option v-for="item in runs" :key="item.run.id" :label="`${item.course_name} / ${item.run.class_name} / ${item.exam_name}`" :value="item.run.id" />
           </el-select>
-          <el-button type="success" @click="openReportPreview" :disabled="!selectedRunId">查看报告预览</el-button>
+          <el-button type="success" @click="openReportPreview" :disabled="!selectedRunId || hasBlockingDataIssues">查看报告预览</el-button>
           <el-button plain @click="loadDashboard" :disabled="!selectedRunId">刷新分析</el-button>
         </div>
       </div>
@@ -41,6 +41,28 @@
           </div>
         </article>
       </div>
+
+      <el-alert
+        v-if="dashboard?.readiness?.blocking_errors?.length || dashboard?.data_quality?.issues?.length"
+        class="data-quality-alert"
+        type="warning"
+        show-icon
+        :closable="false"
+        title="数据需要补充后才能生成可信报告"
+      >
+        <template #default>
+          <p v-for="error in dashboard.readiness.blocking_errors" :key="error">{{ error }}</p>
+          <p v-for="issue in dashboard.data_quality.issues" :key="issue">{{ issue }}</p>
+        </template>
+      </el-alert>
+
+      <div v-if="dashboard?.readiness" class="readiness-list">
+        <article v-for="item in dashboard.readiness.items" :key="item.key" :class="['readiness-item', item.status]">
+          <span>{{ item.status === 'ready' ? '已完成' : '待补充' }}</span>
+          <strong>{{ item.label }}</strong>
+          <p>{{ item.detail }}</p>
+        </article>
+      </div>
     </article>
 
     <article class="card panel next-step-panel" v-if="dashboard">
@@ -49,9 +71,9 @@
       </div>
       <div class="summary-grid">
         <article class="summary-card">
-          <h4>生成报告正文</h4>
-          <p>进入报告预览页，基于本次计算结果生成正文并导出文档。</p>
-          <el-button type="primary" plain @click="openReportPreview">去生成报告</el-button>
+          <h4>{{ dashboard.readiness.can_generate_report ? '生成报告正文' : '补齐报告数据' }}</h4>
+          <p>{{ dashboard.readiness.can_generate_report ? '进入报告预览页，基于本次计算结果生成正文并导出文档。' : '当前任务还缺少关键数据，请先按提示补齐后再生成正式报告。' }}</p>
+          <el-button type="primary" plain @click="openReadinessNextAction">{{ dashboard.readiness.next_action.label }}</el-button>
         </article>
         <article class="summary-card">
           <h4>生成改进建议</h4>
@@ -146,6 +168,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import ScoreDistributionChart from '../components/charts/ScoreDistributionChart.vue'
 import LineMetricChart from '../components/charts/LineMetricChart.vue'
@@ -171,6 +194,7 @@ const outcomeLabels = computed(() => dashboard.value?.course_outcomes.map((item)
 const outcomeValues = computed(() => dashboard.value?.course_outcomes.map((item) => Number(item.achievement.toFixed(4))) || [])
 const questionGroupLabels = computed(() => dashboard.value?.question_groups.map((item) => item.qgroup_name) || [])
 const questionGroupValues = computed(() => dashboard.value?.question_groups.map((item) => Number(item.achievement.toFixed(4))) || [])
+const hasBlockingDataIssues = computed(() => dashboard.value?.readiness?.can_generate_report === false)
 
 async function loadRuns() {
   runs.value = await analysisRunApi.list()
@@ -195,8 +219,18 @@ function onRunChange() {
 
 function openReportPreview() {
   if (!selectedRunId.value) return
+  if (hasBlockingDataIssues.value) {
+    ElMessage.warning(dashboard.value?.readiness?.blocking_errors?.[0] || '请先补齐关键数据后再生成报告。')
+    return
+  }
   appStore.selectedRunId = selectedRunId.value
   router.push({ path: '/report-preview', query: { run: String(selectedRunId.value) } })
+}
+
+function openReadinessNextAction() {
+  if (!selectedRunId.value || !dashboard.value?.readiness) return
+  appStore.selectedRunId = selectedRunId.value
+  router.push({ path: dashboard.value.readiness.next_action.path, query: { run: String(selectedRunId.value) } })
 }
 
 function openWarnings() {
@@ -230,6 +264,59 @@ onMounted(loadRuns)
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.data-quality-alert {
+  margin-top: 1rem;
+}
+
+.data-quality-alert p {
+  margin: 0.25rem 0;
+  line-height: 1.7;
+}
+
+.readiness-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.readiness-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.readiness-item span {
+  display: inline-flex;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.readiness-item.ready span {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.readiness-item.pending span {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.readiness-item strong {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--ink-title);
+}
+
+.readiness-item p {
+  margin: 0.45rem 0 0;
+  color: var(--ink-muted);
+  line-height: 1.6;
 }
 
 .grid-2-col {

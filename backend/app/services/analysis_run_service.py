@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import math
+import re
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -35,6 +37,7 @@ SAMPLE_DIR = ROOT_DIR / "sample_data"
 TEACHER_COURSE_PREFIX = "TCHR-"
 REPORT_NARRATIVE_CONTENT = "report_narrative"
 AI_SUGGESTION_CONTENT = "ai_suggestion"
+REPORT_CONTEXT_SNAPSHOT_CONTENT = "report_context_snapshot"
 GENERATION_SOURCE_KEY = "_generation_source"
 AI_SUGGESTION_MARKER = "deepseek_ai_suggestion_v3"
 AI_SUGGESTION_TEMPLATE_KEY = "_suggestion_template"
@@ -104,6 +107,8 @@ def get_run_dashboard(db: Session, run_id: int) -> dict:
         "course_outcome_chart": context["course_outcome_chart"],
         "student_outcomes": context["student_outcomes"],
         "warnings": context["warnings"],
+        "data_quality": context["data_quality"],
+        "readiness": _build_run_readiness(context),
         "narrative_preview": narrative,
     }
 
@@ -156,7 +161,7 @@ def get_run_paper_summary_cache(db: Session, run_id: int) -> dict:
         "score_stats": context["score_stats"],
         "difficulty_label": context["difficulty_label"],
         "warnings": context["warnings"],
-        "narrative": _strip_generation_metadata(cached.payload) if has_ai_suggestion and cached else None,
+        "narrative": _sanitize_report_narrative(_strip_generation_metadata(cached.payload), context) if has_ai_suggestion and cached else None,
         "ai_enabled": has_ai_suggestion,
         "cached": has_ai_suggestion,
         "suggestion_template": _suggestion_template_from_payload(cached.payload if cached else None),
@@ -185,7 +190,7 @@ async def get_run_paper_summary(
             "score_stats": context["score_stats"],
             "difficulty_label": context["difficulty_label"],
             "warnings": context["warnings"],
-            "narrative": _strip_generation_metadata(cached.payload),
+            "narrative": _sanitize_report_narrative(_strip_generation_metadata(cached.payload), context),
             "ai_enabled": True,
             "cached": True,
             "suggestion_template": _suggestion_template_from_payload(cached.payload, suggestion_template),
@@ -210,6 +215,7 @@ async def get_run_paper_summary(
             used_ai = ai_client.is_configured
     except Exception:
         pass
+    narrative = _sanitize_report_narrative(narrative, context)
     payload = _with_generation_marker(narrative, AI_SUGGESTION_MARKER, suggestion_template) if used_ai else narrative
     _save_generated_content(db, run_id, AI_SUGGESTION_CONTENT, payload, used_ai)
     return {
@@ -217,7 +223,7 @@ async def get_run_paper_summary(
         "score_stats": context["score_stats"],
         "difficulty_label": context["difficulty_label"],
         "warnings": context["warnings"],
-        "narrative": _strip_generation_metadata(payload),
+        "narrative": _sanitize_report_narrative(_strip_generation_metadata(payload), context),
         "ai_enabled": used_ai,
         "cached": False,
         "suggestion_template": suggestion_template,
@@ -231,10 +237,11 @@ def get_cached_run_narrative(db: Session, run_id: int) -> dict:
     if not run:
         return {}
     cached = _get_generated_content(db, run_id, REPORT_NARRATIVE_CONTENT)
+    context = _build_run_context(db, run)
     ai_client = DeepSeekClient()
     return {
         "run": _serialize_run(run),
-        "narrative": cached.payload if cached else None,
+        "narrative": _sanitize_report_narrative(cached.payload, context) if cached else None,
         "ai_enabled": bool(cached.ai_enabled) if cached else ai_client.is_configured,
         "cached": bool(cached),
     }
@@ -249,7 +256,12 @@ async def get_run_narrative(db: Session, run_id: int) -> dict:
     context = _build_run_context(db, run)
     cached = _get_generated_content(db, run_id, REPORT_NARRATIVE_CONTENT)
     if cached:
-        return {"run": _serialize_run(run), "narrative": cached.payload, "ai_enabled": bool(cached.ai_enabled), "cached": True}
+        return {
+            "run": _serialize_run(run),
+            "narrative": _sanitize_report_narrative(cached.payload, context),
+            "ai_enabled": bool(cached.ai_enabled),
+            "cached": True,
+        }
 
     fallback_narrative = _build_rule_based_narrative(context)
     narrative = fallback_narrative
@@ -270,32 +282,32 @@ async def get_run_narrative(db: Session, run_id: int) -> dict:
             used_ai = ai_client.is_configured
     except Exception:
         pass
+    narrative = _sanitize_report_narrative(narrative, context)
     _save_generated_content(db, run_id, REPORT_NARRATIVE_CONTENT, narrative, used_ai)
     return {"run": _serialize_run(run), "narrative": narrative, "ai_enabled": used_ai, "cached": False}
 
 
 def get_run_export_context(db: Session, run_id: int) -> dict:
     ensure_teacher_demo_data(db)
-    refresh_analysis_run(db, run_id)
     run = _get_run(db, run_id)
     if not run:
         return {}
-    context = _build_run_context(db, run)
-    fallback_narrative = _build_rule_based_narrative(context)
-    cached_ai = _get_generated_content(db, run_id, AI_SUGGESTION_CONTENT)
-    cached_report = _get_generated_content(db, run_id, REPORT_NARRATIVE_CONTENT)
-    if _is_ai_generated_content(cached_ai, fallback_narrative, required_marker=AI_SUGGESTION_MARKER) and cached_ai:
-        narrative = _strip_generation_metadata(cached_ai.payload)
-        narrative_source = "ai_suggestion_cache"
-    elif cached_report:
-        narrative = cached_report.payload
-        narrative_source = "report_narrative_cache"
+    snapshot = _get_generated_content(db, run_id, REPORT_CONTEXT_SNAPSHOT_CONTENT)
+    if snapshot:
+        context = copy.deepcopy(snapshot.payload)
     else:
-        narrative = fallback_narrative
-        narrative_source = "rule_based"
+        refresh_analysis_run(db, run_id)
+        context = _build_run_context(db, run)
+        context["run"] = _serialize_run(run)
+        context["export_validation"] = _validate_export_context(context)
+        if not context["export_validation"]["errors"]:
+            _save_generated_content(db, run_id, REPORT_CONTEXT_SNAPSHOT_CONTENT, context, False)
+
+    narrative, narrative_source = _select_export_narrative(db, run_id, context)
     context["run"] = _serialize_run(run)
     context["narrative"] = narrative
     context["narrative_source"] = narrative_source
+    context["export_validation"] = context.get("export_validation") or _validate_export_context(context)
     return context
 
 
@@ -313,6 +325,7 @@ def _build_run_context(db: Session, run: AnalysisRun) -> dict:
         .all()
     )
     question_df = _question_scores_df(db, run, questions, final_df)
+    data_quality = _question_score_quality(final_df, questions, question_df)
     student_scores = _student_total_df(students_df, final_df, usual_df, midterm_df, run)
     question_items = _question_items(question_df, questions, final_df)
     question_groups = _question_group_summary(question_df, questions)
@@ -353,6 +366,7 @@ def _build_run_context(db: Session, run: AnalysisRun) -> dict:
         "course_outcome_chart": outcome_chart,
         "student_outcomes": student_outcomes,
         "warnings": warnings,
+        "data_quality": data_quality,
         "student_scores": student_scores.to_dict(orient="records"),
         "question_records": question_df.to_dict(orient="records"),
     }
@@ -513,38 +527,29 @@ def _question_scores_df(db: Session, run: AnalysisRun, questions: list[Question]
         ]
     )
 
+    return df
+
+
+def _question_score_quality(final_df: pd.DataFrame, questions: list[Question], question_df: pd.DataFrame) -> dict:
     expected_rows = len(final_df) * len(questions)
-    if expected_rows == 0 or len(df) >= max(1, int(expected_rows * 0.6)):
-        return df
-    return _synthesized_question_scores(final_df, questions)
-
-
-def _synthesized_question_scores(final_df: pd.DataFrame, questions: list[Question]) -> pd.DataFrame:
-    if final_df.empty or not questions:
-        return pd.DataFrame()
-    exam_total = sum(max(_safe_number(question.score), 1.0) for question in questions)
-    rows: list[dict] = []
-    for _, student in final_df.iterrows():
-        ratio = min(max(_safe_number(student["final_score"]) / exam_total, 0.2), 0.98)
-        digits = "".join(ch for ch in str(student["student_no"]) if ch.isdigit())
-        seed = int(digits[-2:]) if len(digits) >= 2 else sum(ord(ch) for ch in str(student["student_no"])) % 97
-        for index, question in enumerate(questions):
-            modifier = 0.88 + ((seed + index) % 5) * 0.03
-            score = min(_safe_number(question.score), max(0.0, round(_safe_number(question.score) * ratio * modifier, 2)))
-            rows.append(
-                {
-                    "student_id": int(student["student_id"]),
-                    "student_no": student["student_no"],
-                    "question_id": question.id,
-                    "qno": question.qno,
-                    "qtype": question.qtype,
-                    "qgroup_name": question.qgroup_name or question.qtype,
-                    "co_code": question.co_code or "COX",
-                    "score": score,
-                    "full_score": _safe_number(question.score),
-                }
-            )
-    return pd.DataFrame(rows)
+    actual_rows = 0 if question_df.empty else int(len(question_df[["student_id", "question_id"]].drop_duplicates()))
+    missing_rows = max(expected_rows - actual_rows, 0)
+    coverage = _safe_number(actual_rows / expected_rows) if expected_rows else 0.0
+    issues: list[str] = []
+    if not questions:
+        issues.append("缺少试卷结构，无法计算逐题分析和课程目标达成度。")
+    if final_df.empty:
+        issues.append("缺少学生期末卷面成绩，无法计算成绩统计。")
+    if expected_rows and missing_rows:
+        issues.append(f"缺少 {missing_rows} 条学生逐题得分记录，系统不会自动合成课程目标达成结果。")
+    return {
+        "question_score_rows_expected": int(expected_rows),
+        "question_score_rows_actual": int(actual_rows),
+        "missing_question_score_rows": int(missing_rows),
+        "question_score_coverage": round(coverage, 4),
+        "has_synthesized_question_scores": False,
+        "issues": issues,
+    }
 
 
 def _question_items(question_df: pd.DataFrame, questions: list[Question], final_df: pd.DataFrame) -> list[dict]:
@@ -918,6 +923,159 @@ def _percent_text(value) -> str:
     return f"{round(_safe_number(value) * 100, 1)}%"
 
 
+def _select_export_narrative(db: Session, run_id: int, context: dict) -> tuple[dict, str]:
+    fallback_narrative = _build_rule_based_narrative(context)
+    cached_ai = _get_generated_content(db, run_id, AI_SUGGESTION_CONTENT)
+    cached_report = _get_generated_content(db, run_id, REPORT_NARRATIVE_CONTENT)
+    if _is_ai_generated_content(cached_ai, fallback_narrative, required_marker=AI_SUGGESTION_MARKER) and cached_ai:
+        return _sanitize_report_narrative(_strip_generation_metadata(cached_ai.payload), context), "ai_suggestion_cache"
+    if cached_report:
+        return _sanitize_report_narrative(cached_report.payload, context), "report_narrative_cache"
+    return _sanitize_report_narrative(fallback_narrative, context), "rule_based"
+
+
+def _sanitize_report_narrative(narrative, context: dict | None):
+    """Keep local warning tables detailed, but never place student identifiers in AI/report prose."""
+    if narrative is None:
+        return None
+    sensitive_tokens = _student_identifier_tokens(context or {})
+    if isinstance(narrative, dict):
+        return {key: _sanitize_report_narrative(value, context) for key, value in narrative.items()}
+    if isinstance(narrative, list):
+        return [_sanitize_report_narrative(value, context) for value in narrative]
+    if not isinstance(narrative, str):
+        return narrative
+
+    text = narrative
+    for token in sensitive_tokens:
+        text = text.replace(token, "重点关注学生")
+    text = re.sub(r"(?<!\d)\d{8,14}(?:\.0)?(?!\d)", "重点关注学生", text)
+    text = re.sub(r"(重点关注学生[、，,;；\s]*){2,}", "重点关注学生、", text)
+    text = text.replace("如重点关注学生、等", "如重点关注学生等")
+    return text
+
+
+def _student_identifier_tokens(context: dict) -> list[str]:
+    tokens: set[str] = set()
+    for collection_name in ("warnings", "student_scores", "student_outcomes"):
+        for item in context.get(collection_name) or []:
+            for key in ("student_no", "student_name", "name"):
+                value = str(item.get(key) or "").strip()
+                if len(value) >= 2:
+                    tokens.add(value)
+    return sorted(tokens, key=len, reverse=True)
+
+
+def _validate_export_context(context: dict) -> dict:
+    meta = context.get("meta") or {}
+    errors: list[str] = []
+    warnings: list[str] = []
+    required_meta = {
+        "course_name": "课程名称",
+        "class_name": "教学班级",
+        "academic_year": "学年学期",
+        "department": "院系",
+        "teacher_name": "任课教师",
+        "exam_date": "考试日期",
+    }
+    for key, label in required_meta.items():
+        value = str(meta.get(key) or "").strip()
+        if not value or value == "待补充" or value.startswith("未填写"):
+            errors.append(f"缺少{label}，请先在成绩文件或课程信息中补充。")
+
+    if not context.get("score_stats", {}).get("total_students"):
+        errors.append("缺少学生期末卷面成绩，无法生成报告。")
+    if not context.get("question_items"):
+        errors.append("缺少试卷结构，无法生成课程目标支撑分析。")
+    if not context.get("course_outcomes"):
+        errors.append("缺少课程目标达成度结果，请补充课程目标与逐题得分。")
+
+    data_quality = context.get("data_quality") or {}
+    if data_quality.get("missing_question_score_rows"):
+        errors.append("缺少学生逐题得分，系统不会自动合成达成度，请补齐后再导出报告。")
+    for issue in data_quality.get("issues") or []:
+        warnings.append(str(issue))
+
+    return {"ok": not errors, "errors": errors, "warnings": warnings}
+
+
+def _build_run_readiness(context: dict) -> dict:
+    validation = _validate_export_context(context)
+    data_quality = context.get("data_quality") or {}
+    meta = context.get("meta") or {}
+    total_students = int(context.get("score_stats", {}).get("total_students") or 0)
+    question_count = len(context.get("question_items") or [])
+    outcome_count = len(context.get("course_outcomes") or [])
+
+    def item(key: str, label: str, ready: bool, detail: str, path: str) -> dict:
+        return {
+            "key": key,
+            "label": label,
+            "status": "ready" if ready else "pending",
+            "detail": detail,
+            "path": path,
+        }
+
+    meta_ready = not any(
+        not str(meta.get(key) or "").strip()
+        or str(meta.get(key) or "").strip() == "待补充"
+        or str(meta.get(key) or "").startswith("未填写")
+        for key in ("course_name", "class_name", "academic_year", "department", "teacher_name", "exam_date")
+    )
+    question_score_ready = not data_quality.get("missing_question_score_rows") and bool(data_quality.get("question_score_rows_expected"))
+    items = [
+        item("meta", "课程与考试信息", meta_ready, "课程、班级、学期、院系、教师和考试日期已补齐。" if meta_ready else "请补齐课程、班级、学期、院系、教师和考试日期。", "/courses"),
+        item("students", "学生卷面成绩", total_students > 0, f"已读取 {total_students} 名学生期末卷面成绩。" if total_students else "请上传学生期末卷面成绩。", "/exams"),
+        item("paper_structure", "试卷结构", question_count > 0, f"已识别 {question_count} 个题目或题型小项。" if question_count else "请补齐题号、题型、满分和课程目标映射。", "/exams"),
+        item("question_scores", "学生逐题得分", question_score_ready, "逐题得分记录完整。" if question_score_ready else "请补齐学生逐题得分，系统不会自动合成达成度。", "/exams"),
+        item("course_outcomes", "课程目标达成度", outcome_count > 0, f"已形成 {outcome_count} 个课程目标达成结果。" if outcome_count else "请补齐课程目标与题目映射后重新计算。", "/analysis"),
+    ]
+    next_pending = next((entry for entry in items if entry["status"] != "ready"), None)
+    if next_pending:
+        action_labels = {
+            "meta": "补齐课程与考试信息",
+            "students": "导入学生卷面成绩",
+            "paper_structure": "补齐试卷结构",
+            "question_scores": "补齐学生逐题得分",
+            "course_outcomes": "重新计算课程目标达成度",
+        }
+        next_action = {
+            "label": action_labels.get(next_pending["key"], f"处理{next_pending['label']}"),
+            "path": next_pending["path"],
+            "kind": "fix_data",
+        }
+    else:
+        next_action = {"label": "去报告预览生成报告", "path": "/report-preview", "kind": "generate_report"}
+
+    return {
+        "can_generate_report": bool(validation["ok"]),
+        "blocking_errors": validation["errors"],
+        "warnings": validation["warnings"],
+        "items": items,
+        "next_action": next_action,
+    }
+
+
+def invalidate_run_generated_content(
+    db: Session,
+    run_id: int | None,
+    *,
+    include_ai: bool = False,
+    commit: bool = True,
+) -> None:
+    if not run_id:
+        return
+    content_types = [REPORT_CONTEXT_SNAPSHOT_CONTENT, REPORT_NARRATIVE_CONTENT]
+    if include_ai:
+        content_types.append(AI_SUGGESTION_CONTENT)
+    db.query(GeneratedContent).filter(
+        GeneratedContent.run_id == run_id,
+        GeneratedContent.content_type.in_(content_types),
+    ).delete(synchronize_session=False)
+    if commit:
+        db.commit()
+
+
 def _serialize_run_overview(db: Session, run: AnalysisRun) -> dict:
     course = db.query(Course).filter(Course.id == run.course_id).first()
     exam = db.query(Exam).filter(Exam.id == run.exam_id).first()
@@ -1167,7 +1325,7 @@ def _seed_analysis_runs(db: Session) -> None:
                     class_name=class_name,
                     academic_year="2025-2026",
                     term_label=course.term,
-                    teacher_name="未填写教师",
+                    teacher_name="示例教师",
                     department=course.department,
                     major=course.major,
                     exam_date=exam.date,
@@ -1224,11 +1382,19 @@ def _count_component_scores(db: Session, course_id: int, class_name: str) -> int
 
 
 def _calculate_run_status(db: Session, run: AnalysisRun) -> str:
-    has_questions = db.query(Question.id).filter(Question.exam_id == run.exam_id).count() > 0
-    has_scores = _count_exam_students(db, run.exam_id, run.class_name) > 0
-    if has_questions and has_scores:
+    question_count = db.query(Question.id).filter(Question.exam_id == run.exam_id).count()
+    score_count = _count_exam_students(db, run.exam_id, run.class_name)
+    question_score_count = (
+        db.query(StudentQuestionScore.id)
+        .join(Student, Student.id == StudentQuestionScore.student_id)
+        .join(Question, Question.id == StudentQuestionScore.question_id)
+        .filter(Student.class_name == run.class_name, Question.exam_id == run.exam_id)
+        .count()
+    )
+    expected_question_scores = question_count * score_count
+    if question_count and score_count and expected_question_scores and question_score_count >= expected_question_scores:
         return "ready"
-    if has_questions or has_scores:
+    if question_count or score_count:
         return "partial"
     return "draft"
 

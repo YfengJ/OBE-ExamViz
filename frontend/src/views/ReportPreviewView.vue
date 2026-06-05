@@ -12,17 +12,47 @@
           <el-select v-model="selectedRunId" style="width: 360px" @change="onRunChange">
             <el-option v-for="item in runs" :key="item.run.id" :label="`${item.course_name} / ${item.run.class_name} / ${item.exam_name}`" :value="item.run.id" />
           </el-select>
-          <el-button type="primary" :loading="generating" @click="generateNarrative" :disabled="!selectedRunId">生成报告文字</el-button>
-          <el-button type="success" :loading="exporting" @click="exportDocx" :disabled="!selectedRunId || !reportNarrative">导出报告</el-button>
+          <el-button type="primary" :loading="generating" @click="generateNarrative" :disabled="!selectedRunId || !canGenerateReport">生成报告文字</el-button>
+          <el-button type="success" :loading="exporting" @click="exportDocx" :disabled="!selectedRunId || !reportNarrative || !canGenerateReport">导出报告</el-button>
         </div>
       </div>
 
       <el-alert
-        v-if="dashboard"
+        v-if="dashboard && canGenerateReport"
         :title="reportNarrative ? '报告正文已生成，可以继续核对并导出。' : '报告正文待生成。'"
         :type="reportNarrative ? 'success' : 'info'"
         :closable="false"
       />
+
+      <el-alert
+        v-if="dashboard && !canGenerateReport"
+        class="report-block-alert"
+        title="当前任务还不能生成可信报告"
+        type="warning"
+        show-icon
+        :closable="false"
+      >
+        <template #default>
+          <p v-for="error in readinessErrors" :key="error">{{ error }}</p>
+          <el-button type="primary" plain @click="goReadinessNextAction">{{ dashboard.readiness.next_action.label }}</el-button>
+        </template>
+      </el-alert>
+    </article>
+
+    <article class="card panel" v-if="dashboard?.readiness">
+      <div class="panel-header compact">
+        <div>
+          <h3>报告生成检查</h3>
+          <p class="subtitle">所有关键项完成后，系统才会允许生成和导出正式报告。</p>
+        </div>
+      </div>
+      <div class="readiness-list">
+        <article v-for="item in dashboard.readiness.items" :key="item.key" :class="['readiness-item', item.status]">
+          <span>{{ item.status === 'ready' ? '已完成' : '待补充' }}</span>
+          <strong>{{ item.label }}</strong>
+          <p>{{ item.detail }}</p>
+        </article>
+      </div>
     </article>
 
     <article class="card lineage-panel" v-if="dataLineage">
@@ -178,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -199,6 +229,8 @@ const aiSuggestion = ref<RunNarrative | null>(null)
 const generating = ref(false)
 const suggestionGenerating = ref(false)
 const exporting = ref(false)
+const canGenerateReport = computed(() => Boolean(dashboard.value?.readiness?.can_generate_report))
+const readinessErrors = computed(() => dashboard.value?.readiness?.blocking_errors || [])
 
 async function loadRuns() {
   runs.value = await analysisRunApi.list()
@@ -229,6 +261,10 @@ async function generateNarrative() {
     ElMessage.warning('请先选择分析任务。')
     return
   }
+  if (!canGenerateReport.value) {
+    ElMessage.warning(readinessErrors.value[0] || '请先补齐关键数据后再生成报告。')
+    return
+  }
   generating.value = true
   try {
     const data = await analysisRunApi.narrative(selectedRunId.value)
@@ -242,6 +278,10 @@ async function generateNarrative() {
 }
 
 async function exportDocx() {
+  if (!canGenerateReport.value) {
+    ElMessage.warning(readinessErrors.value[0] || '请先补齐关键数据后再导出报告。')
+    return
+  }
   if (!selectedRunId.value || !reportNarrative.value) {
     ElMessage.warning('请先生成报告文字，再导出报告。')
     return
@@ -287,6 +327,12 @@ function onRunChange() {
   loadDashboard()
 }
 
+function goReadinessNextAction() {
+  if (!selectedRunId.value || !dashboard.value?.readiness) return
+  appStore.selectedRunId = selectedRunId.value
+  router.push({ path: dashboard.value.readiness.next_action.path, query: { run: String(selectedRunId.value) } })
+}
+
 function sourceTone(method: string) {
   return `source-${method.replace('_', '-')}`
 }
@@ -316,6 +362,58 @@ onMounted(loadRuns)
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.report-block-alert {
+  margin-top: 1rem;
+}
+
+.report-block-alert p {
+  margin: 0.2rem 0 0.75rem;
+  line-height: 1.7;
+}
+
+.readiness-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.readiness-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.readiness-item span {
+  display: inline-flex;
+  padding: 0.2rem 0.58rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.readiness-item.ready span {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.readiness-item.pending span {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.readiness-item strong {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--ink-title);
+}
+
+.readiness-item p {
+  margin: 0.45rem 0 0;
+  color: var(--ink-muted);
+  line-height: 1.65;
 }
 
 .lineage-panel {

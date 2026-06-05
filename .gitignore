@@ -55,12 +55,14 @@ data/
 docx/
 pptx_builder/
 temp_ppt_env/
-/scripts/
+/scripts/*
+!/scripts/
+!/scripts/verify_delivery.sh
 /tasks/
 /task_plan.md
 /progress.md
 /findings.md
-/CHECKLIST.md
+!/CHECKLIST.md
 frontend/node_modules_windows_backup/
 /前端界面截图/
 

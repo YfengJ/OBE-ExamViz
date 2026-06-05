@@ -278,9 +278,7 @@ async def generate_ai_summary(warning_id: int, db: Session = Depends(get_db)):
     if not warning:
         raise not_found("warning", warning_id)
 
-    student = db.query(Student).filter(Student.id == warning.student_id).first()
-    anonymous_id = student.student_no if student else f"ID-{warning.student_id}"
-    summary = await ai_client.generate_warning_summary(anonymous_id, warning.reasons_json)
+    summary = await ai_client.generate_warning_summary("anonymous", warning.reasons_json)
     warning.ai_summary = summary
     db.commit()
     db.refresh(warning)
@@ -294,9 +292,7 @@ async def generate_ai_summary_batch(warning_ids: list[int], db: Session = Depend
         warning = db.query(WarningResult).filter(WarningResult.id == warning_id).first()
         if not warning:
             continue
-        student = db.query(Student).filter(Student.id == warning.student_id).first()
-        anonymous_id = student.student_no if student else f"ID-{warning.student_id}"
-        warning.ai_summary = await ai_client.generate_warning_summary(anonymous_id, warning.reasons_json)
+        warning.ai_summary = await ai_client.generate_warning_summary("anonymous", warning.reasons_json)
         updated += 1
     db.commit()
     return ok({"updated": updated})

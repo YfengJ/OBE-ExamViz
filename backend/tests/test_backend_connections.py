@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 import math
 from io import BytesIO
 
@@ -23,6 +24,19 @@ from backend.app.models.student_question_score import StudentQuestionScore
 from backend.app.models.warning_result import WarningResult
 from backend.app.models.warning_rule import WarningRule
 from backend.app.services.analysis_service import ensure_seed_data_for_demo
+
+
+def test_api_health_reports_delivery_privacy_status() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "healthy"
+    assert payload["checks"]["database"] == "ok"
+    assert payload["privacy"]["ai_prompt_redaction"] is True
+    assert payload["privacy"]["raw_student_identifiers_to_ai"] is False
+    assert "deepseek_api_key" not in json.dumps(payload).lower()
 
 
 def _seed_demo_data(client: TestClient) -> None:
