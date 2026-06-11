@@ -105,6 +105,8 @@ pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Python 3.12 is supported. The backend requirements file selects a Python-3.12-compatible NumPy wheel automatically.
+
 On Windows, activate the virtual environment with:
 
 ```powershell

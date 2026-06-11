@@ -105,6 +105,8 @@ pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+支持 Python 3.12。后端依赖文件会在 Python 3.12 下自动选择兼容的 NumPy 安装包。
+
 Windows 激活虚拟环境：
 
 ```powershell
