@@ -180,6 +180,14 @@ Before packaging or publishing, run:
 
 The script checks patch whitespace, high-risk AI privacy patterns, backend tests, and the frontend production build.
 
+To create a sanitized teacher-facing archive locally, run:
+
+```bash
+./scripts/package_release.sh
+```
+
+The package is written to `output/release/OBE-ExamViz-teacher.zip`. GitHub Actions also builds and uploads the same package as the `OBE-ExamViz-teacher` artifact.
+
 You can also run the main checks manually:
 
 ```bash

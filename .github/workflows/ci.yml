@@ -49,3 +49,13 @@ jobs:
           AUTO_SEED_DEMO_DATA: "false"
           DEEPSEEK_API_KEY: ""
         run: ./scripts/verify_delivery.sh
+
+      - name: Build sanitized teacher package
+        run: ./scripts/package_release.sh
+
+      - name: Upload teacher package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBE-ExamViz-teacher
+          path: output/release/OBE-ExamViz-teacher.zip
+          if-no-files-found: error

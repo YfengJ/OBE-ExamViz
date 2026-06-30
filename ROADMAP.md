@@ -5,9 +5,12 @@ This roadmap tracks meaningful maintenance work for OBE-ExamViz. It is intention
 ## Near Term
 
 - Keep GitHub Actions CI green on `main`.
-- Improve release packaging so a clean teacher-facing zip can be generated from CI.
 - Add more parser tests for non-template score workbooks.
 - Expand README screenshots when the UI changes, using demo data only.
+
+## Completed Maintenance
+
+- Generate a sanitized teacher-facing zip from CI and upload it as a GitHub Actions artifact.
 
 ## Medium Term
 

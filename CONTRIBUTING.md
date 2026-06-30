@@ -37,6 +37,14 @@ Before opening a pull request, run:
 
 This checks patch whitespace, AI privacy risk patterns, backend tests, and the frontend production build.
 
+To verify the release package path, run:
+
+```bash
+./scripts/package_release.sh
+```
+
+The package audit rejects tracked `.env` files, databases, real data folders, local output folders, dependency folders, and unsupported Office files outside `backend/templates/`.
+
 ## Pull Request Checklist
 
 - Explain what changed and why.

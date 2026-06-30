@@ -2,6 +2,13 @@
 
 All notable public maintenance changes are tracked here.
 
+## 2026-06-30
+
+- Added `scripts/package_release.sh` to build a sanitized teacher-facing zip from tracked public files.
+- Added package path and secret audits to reject local databases, `.env` files, private data folders, output folders, dependency folders, and unsupported Office files.
+- Updated GitHub Actions to upload `OBE-ExamViz-teacher.zip` as a workflow artifact.
+- Documented local and CI release packaging in README, checklist, and contribution docs.
+
 ## 2026-06-06
 
 - Added bilingual README files with language switching.

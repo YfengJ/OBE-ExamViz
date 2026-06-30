@@ -125,12 +125,20 @@ cd /Users/yfengj/PyCharmMiscProject/repo/repo
 ./scripts/verify_delivery.sh
 ```
 
+生成安全交付包：
+
+```bash
+cd /Users/yfengj/PyCharmMiscProject/repo/repo
+./scripts/package_release.sh
+```
+
 期望结果：
 
 - `pytest` 全部通过
 - `vite build` 成功
 - `git diff --check` 无输出
 - AI 隐私高风险搜索无命中
+- `output/release/OBE-ExamViz-teacher.zip` 生成成功，且不包含 `.env`、数据库、真实数据目录、输出目录或依赖目录
 
 ## 6. 演示数据检查
 

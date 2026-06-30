@@ -180,6 +180,14 @@ AUTO_SEED_DEMO_DATA=false
 
 该脚本会检查补丁空白、AI 隐私高风险写法、后端测试和前端生产构建。
 
+如果需要在本机生成给老师的安全交付包，运行：
+
+```bash
+./scripts/package_release.sh
+```
+
+交付包会输出到 `output/release/OBE-ExamViz-teacher.zip`。GitHub Actions 也会自动构建并上传同名 `OBE-ExamViz-teacher` artifact。
+
 也可以手动运行：
 
 ```bash

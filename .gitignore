@@ -58,6 +58,7 @@ temp_ppt_env/
 /scripts/*
 !/scripts/
 !/scripts/verify_delivery.sh
+!/scripts/package_release.sh
 /tasks/
 /task_plan.md
 /progress.md
