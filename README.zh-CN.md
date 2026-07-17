@@ -131,6 +131,7 @@ npm run dev
 ```env
 VITE_API_PROXY_TARGET=http://127.0.0.1:8001
 VITE_API_TIMEOUT_MS=60000
+VITE_DEV_HOST=127.0.0.1
 ```
 
 ## 环境变量
@@ -178,7 +179,7 @@ AUTO_SEED_DEMO_DATA=false
 ./scripts/verify_delivery.sh
 ```
 
-该脚本会检查补丁空白、AI 隐私高风险写法、后端测试和前端生产构建。
+该脚本会检查补丁空白、AI 隐私高风险写法、后端测试、前端 lint 和前端生产构建。
 
 如果需要在本机生成给老师的安全交付包，运行：
 
@@ -192,11 +193,14 @@ AUTO_SEED_DEMO_DATA=false
 
 ```bash
 python -m pytest backend/tests -q
-cd frontend && npm run build
+cd frontend && npm run lint && npm run build
 ```
+
+依赖维护方面，GitHub Actions 会单独运行 Security Audit workflow。本机需要进一步检查依赖时，可在 `frontend/` 运行 `npm audit --omit=dev`，后端依赖安装完成后运行 `pip-audit --local`。
 
 ## 公开维护说明
 
 - README 和公开文档尽量使用通用描述，不写真实班级、教师、学生或课程文件名。
 - 交付压缩包、导出报告和运行数据库应放在被忽略目录中。
+- 小型维护事项用 issue 跟踪，涉及源码或文档变更的内容用 pull request 审阅。
 - 如果后续要上传 GitHub，先检查 `git status` 和 `git diff --stat`，只提交安全公开的源码、模板、示例数据和文档。

@@ -36,3 +36,5 @@ git status --short
 ```
 
 Also scan staged files for accidental private data when screenshots, spreadsheets, documents, or templates changed.
+
+Dependency changes are checked by the GitHub Security Audit workflow. For a local audit, run `npm audit --omit=dev` in `frontend/` and `pip-audit --local` after installing the backend dependencies.

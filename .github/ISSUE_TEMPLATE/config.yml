@@ -3,3 +3,6 @@ contact_links:
   - name: Project documentation
     url: https://github.com/YfengJ/OBE-ExamViz#readme
     about: Read the README before opening an issue.
+  - name: Security policy
+    url: https://github.com/YfengJ/OBE-ExamViz/blob/main/SECURITY.md
+    about: Review privacy and vulnerability reporting guidance before sharing sensitive details.

@@ -49,7 +49,6 @@ py --version
 - `frontend/`
 - `docs/`
 - `sample_data/`
-- `tasks/`
 - `README.md`
 - `.gitignore`
 
@@ -487,6 +486,14 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 如果你改了后端端口，记得同步调整前端请求地址或代理配置。
+
+前端开发服务器默认只监听本机地址 `127.0.0.1`。如果确实需要局域网访问，可以在 `frontend/.env` 中临时配置：
+
+```env
+VITE_DEV_HOST=0.0.0.0
+```
+
+公共网络、答辩机或共享电脑上不建议长期使用 `0.0.0.0`。
 
 ## 11. 建议的答辩演示部署流程
 

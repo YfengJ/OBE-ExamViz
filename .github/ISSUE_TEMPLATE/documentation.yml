@@ -1,0 +1,37 @@
+name: Documentation task
+description: Report unclear, outdated, or missing documentation.
+title: "[Docs] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep OBE-ExamViz usable. Please do not attach private score workbooks, real syllabi, screenshots with student data, databases, or API keys.
+  - type: input
+    id: page
+    attributes:
+      label: Documentation page
+      description: Which README, guide, or section needs attention?
+      placeholder: README.md, docs/部署与使用说明.md, docs/09_github_workflow.md
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is unclear or outdated?
+      description: Describe the specific mismatch, missing step, or confusing wording.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested update
+      description: If you know the expected wording or behavior, describe it here.
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed private course files, student identifiers, API keys, local databases, and private screenshots.
+          required: true

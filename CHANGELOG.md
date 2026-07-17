@@ -2,6 +2,12 @@
 
 All notable public maintenance changes are tracked here.
 
+## 2026-07-17
+
+- Added a dedicated GitHub Security Audit workflow for dependency audits and package privacy checks.
+- Added documentation and privacy/security issue forms to make public maintenance safer.
+- Updated PR, README, checklist, security, contribution, and GitHub workflow docs to include frontend lint and dependency-audit guidance.
+
 ## 2026-06-30
 
 - Added `scripts/package_release.sh` to build a sanitized teacher-facing zip from tracked public files.

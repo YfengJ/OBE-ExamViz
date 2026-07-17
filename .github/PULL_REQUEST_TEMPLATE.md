@@ -9,6 +9,7 @@
 ## Verification
 
 - [ ] `./scripts/verify_delivery.sh`
+- [ ] Production dependency audits reviewed when dependencies changed
 - [ ] Screenshots updated when UI changed
 - [ ] No private score files, syllabi, databases, exports, or API keys included
 

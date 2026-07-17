@@ -35,7 +35,14 @@ Before opening a pull request, run:
 ./scripts/verify_delivery.sh
 ```
 
-This checks patch whitespace, AI privacy risk patterns, backend tests, and the frontend production build.
+This checks patch whitespace, AI privacy risk patterns, backend tests, frontend lint, and the frontend production build.
+
+When dependency files change, also review production dependency audits:
+
+```bash
+cd frontend && npm audit --omit=dev
+pip-audit --local
+```
 
 To verify the release package path, run:
 

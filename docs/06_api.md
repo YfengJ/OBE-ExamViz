@@ -152,12 +152,8 @@ GET /import/templates/{template_name}
 
 支持的模板：
 
-- `students_template.csv`
-- `usual_scores_template.csv`
-- `midterm_scores_template.csv`
-- `final_scores_template.csv`
-- `paper_structure_template.csv`
-- `question_scores_template.csv`
+- `teacher_input_template.xlsx`
+- `teacher_report_template.docx`
 
 ### 3.2 导入平时成绩
 
@@ -243,7 +239,7 @@ POST /import/question-scores
 - `file`
 - `run_id`（推荐）
 
-支持两种格式：
+支持三种格式：
 
 格式 A：
 
@@ -257,6 +253,53 @@ POST /import/question-scores
 - `exam_id`
 - `qno`
 - `score`
+
+格式 C：
+
+- `student_no`
+- `qno`
+- `score`
+- 同时通过表单传入 `run_id` 或 `exam_id`
+
+### 3.7 预览成绩工作簿
+
+```http
+POST /import/teacher-workbook-preview
+```
+
+表单字段：
+
+- `file`
+- `exam_date`（可选）
+
+用于读取成绩文件并返回课程、班级、学生人数、题型、课程目标、输入要求和生成依据。
+
+### 3.8 导入成绩工作簿并创建分析任务
+
+```http
+POST /import/teacher-workbook-task
+```
+
+表单字段：
+
+- `file`
+- `exam_date`（可选）
+- `preview_confirmed=true`
+
+后端要求先完成预览确认，再创建或更新课程、考试、题目、学生成绩、逐题得分、课程目标和分析任务。
+
+### 3.9 直接从成绩工作簿导出 Word 报告
+
+```http
+POST /import/teacher-workbook-report
+```
+
+表单字段：
+
+- `file`
+- `exam_date`（可选）
+
+该接口用于兼容“上传工作簿后直接得到 Word 报告”的场景；系统主流程优先使用 `teacher-workbook-preview` 和 `teacher-workbook-task`。
 
 ## 4. 基础对象接口
 

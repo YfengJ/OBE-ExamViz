@@ -5,6 +5,7 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000'
+  const devHost = env.VITE_DEV_HOST || '127.0.0.1'
 
   return {
     plugins: [vue()],
@@ -14,7 +15,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0',
+      host: devHost,
       port: 5173,
       proxy: {
         '/api': {

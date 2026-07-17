@@ -131,6 +131,7 @@ If the backend port is not `8000`, configure `frontend/.env`:
 ```env
 VITE_API_PROXY_TARGET=http://127.0.0.1:8001
 VITE_API_TIMEOUT_MS=60000
+VITE_DEV_HOST=127.0.0.1
 ```
 
 ## Environment Variables
@@ -178,7 +179,7 @@ Before packaging or publishing, run:
 ./scripts/verify_delivery.sh
 ```
 
-The script checks patch whitespace, high-risk AI privacy patterns, backend tests, and the frontend production build.
+The script checks patch whitespace, high-risk AI privacy patterns, backend tests, frontend lint, and the frontend production build.
 
 To create a sanitized teacher-facing archive locally, run:
 
@@ -192,11 +193,14 @@ You can also run the main checks manually:
 
 ```bash
 python -m pytest backend/tests -q
-cd frontend && npm run build
+cd frontend && npm run lint && npm run build
 ```
+
+For dependency maintenance, GitHub Actions runs a separate Security Audit workflow. Locally, use `npm audit --omit=dev` in `frontend/` for production frontend dependencies and `pip-audit --local` after installing backend dependencies when you need a deeper dependency review.
 
 ## Notes For Public Maintenance
 
 - Keep public documentation generic and avoid naming real classes, teachers, students, or course files.
 - Keep generated delivery archives outside the tracked repository.
+- Use issues for small maintenance tasks and pull requests for reviewable source changes.
 - If GitHub publishing is needed, inspect `git status` and `git diff --stat` first, then commit only source code, templates, sample data, and documentation that are safe to publish.

@@ -5,12 +5,15 @@ This roadmap tracks meaningful maintenance work for OBE-ExamViz. It is intention
 ## Near Term
 
 - Keep GitHub Actions CI green on `main`.
-- Add more parser tests for non-template score workbooks.
+- Review the weekly Security Audit workflow and Dependabot pull requests.
+- Add more parser tests for non-template score workbooks ([#14](https://github.com/YfengJ/OBE-ExamViz/issues/14)).
+- Evaluate frontend code-splitting for large chart and UI vendor chunks ([#15](https://github.com/YfengJ/OBE-ExamViz/issues/15)).
 - Expand README screenshots when the UI changes, using demo data only.
 
 ## Completed Maintenance
 
 - Generate a sanitized teacher-facing zip from CI and upload it as a GitHub Actions artifact.
+- Add GitHub issue forms and a Security Audit workflow for safer public maintenance.
 
 ## Medium Term
 

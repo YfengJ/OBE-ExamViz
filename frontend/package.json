@@ -7,13 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.ts --ignore-path .gitignore",
+    "lint": "eslint src vite.config.ts --ext .vue,.ts",
     "check": "npm run build"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.1.0",
-    "axios": "^1.6.2",
-    "echarts": "^5.4.3",
+    "axios": "^1.18.1",
+    "echarts": "^6.1.0",
     "element-plus": "^2.4.4",
     "pinia": "^2.1.7",
     "vue": "^3.3.8",
@@ -21,6 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-vue": "^4.5.0",
     "eslint": "^8.53.0",
     "eslint-plugin-vue": "^9.18.1",

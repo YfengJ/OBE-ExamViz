@@ -21,6 +21,9 @@ else
   python -m pytest backend/tests -q
 fi
 
+echo "==> Frontend lint"
+(cd frontend && npm run lint)
+
 echo "==> Frontend production build"
 (cd frontend && npm run build)
 

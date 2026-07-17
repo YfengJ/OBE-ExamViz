@@ -115,6 +115,7 @@ python -m pytest backend/tests -q
 
 ```bash
 cd /Users/yfengj/PyCharmMiscProject/repo/repo/frontend
+npm run lint
 npm run build
 ```
 
@@ -135,6 +136,7 @@ cd /Users/yfengj/PyCharmMiscProject/repo/repo
 期望结果：
 
 - `pytest` 全部通过
+- `npm run lint` 通过
 - `vite build` 成功
 - `git diff --check` 无输出
 - AI 隐私高风险搜索无命中
@@ -173,6 +175,7 @@ AUTO_SEED_DEMO_DATA=false
 - 5 个主页面都能打开
 - 课程 -> 考试 -> 题目 -> 分析任务 -> 导入 -> 分析 -> 导出 这条主链路可走通
 - `pytest` 通过
+- `npm run lint` 通过
 - `npm run build` 通过
 - `./scripts/verify_delivery.sh` 通过
 - 浏览器控制台没有新的项目级错误
