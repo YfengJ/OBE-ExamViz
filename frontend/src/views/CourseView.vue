@@ -379,7 +379,14 @@ function resetQuestionForm() {
 }
 
 async function loadBase() {
-  const [courseRows, examRows] = await Promise.all([courseApi.list(), examApi.list()])
+  let result: [Course[], Exam[]]
+  try {
+    result = await Promise.all([courseApi.list(), examApi.list()])
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载课程与考试数据失败')
+    return
+  }
+  const [courseRows, examRows] = result
   courses.value = courseRows
   exams.value = examRows
   if (!selectedCourseId.value && courses.value.length) {
@@ -398,7 +405,11 @@ async function loadQuestions() {
     questions.value = []
     return
   }
-  questions.value = await questionApi.list(selectedExamId.value)
+  try {
+    questions.value = await questionApi.list(selectedExamId.value)
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载题目数据失败')
+  }
 }
 
 function selectCourse(row: Course) {
@@ -454,14 +465,22 @@ async function createCourseBySyllabus(file: File) {
 }
 
 async function removeCourse(id: number) {
-  await ElMessageBox.confirm('确定删除该课程吗？系统会同时删除该课程下的考试、题目、成绩、分析任务和已生成建议。', '确认删除', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
-  await courseApi.remove(id)
-  ElMessage.success('课程已删除。')
-  await loadBase()
+  try {
+    await ElMessageBox.confirm('确定删除该课程吗？系统会同时删除该课程下的考试、题目、成绩、分析任务和已生成建议。', '确认删除', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await courseApi.remove(id)
+    ElMessage.success('课程已删除。')
+    await loadBase()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '删除课程失败')
+  }
 }
 
 function openCreateExam() {
@@ -499,14 +518,22 @@ async function saveExam() {
 }
 
 async function removeExam(id: number) {
-  await ElMessageBox.confirm('确定删除该考试吗？已录入题目的考试不能直接删除。', '确认删除', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
-  await examApi.remove(id)
-  ElMessage.success('考试已删除。')
-  await loadBase()
+  try {
+    await ElMessageBox.confirm('确定删除该考试吗？已录入题目的考试不能直接删除。', '确认删除', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await examApi.remove(id)
+    ElMessage.success('考试已删除。')
+    await loadBase()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '删除考试失败')
+  }
 }
 
 function openCreateQuestion() {
@@ -564,14 +591,22 @@ async function saveQuestion() {
 }
 
 async function removeQuestion(id: number) {
-  await ElMessageBox.confirm('确定删除该题目吗？已有逐题得分的题目不能直接删除。', '确认删除', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
-  await questionApi.remove(id)
-  ElMessage.success('题目已删除。')
-  await loadQuestions()
+  try {
+    await ElMessageBox.confirm('确定删除该题目吗？已有逐题得分的题目不能直接删除。', '确认删除', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await questionApi.remove(id)
+    ElMessage.success('题目已删除。')
+    await loadQuestions()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '删除题目失败')
+  }
 }
 
 onMounted(async () => {

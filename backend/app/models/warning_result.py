@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import relationship
@@ -17,7 +17,7 @@ class WarningResult(Base):
     status = Column(String, nullable=False, default="pending")
     reasons_json = Column(JSON, nullable=False)
     ai_summary = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     student = relationship("Student", back_populates="warnings")
     course = relationship("Course")

@@ -107,6 +107,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import WorkflowGuide from '../components/WorkflowGuide.vue'
 import { analysisRunApi, type AnalysisRunOverview } from '../api/modules/analysis'
@@ -120,7 +121,11 @@ const readyCount = computed(() => runs.value.filter((item) => item.run.status ==
 const warningCount = computed(() => runs.value.filter((item) => item.run.status !== 'ready').length)
 
 async function loadRuns() {
-  runs.value = await analysisRunApi.list()
+  try {
+    runs.value = await analysisRunApi.list()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析任务失败')
+  }
 }
 
 function goImportCenter() {

@@ -8,6 +8,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.ai.deepseek_client import DeepSeekClient
@@ -46,7 +47,7 @@ from backend.app.services.import_service import (
 )
 from backend.app.services.syllabus_service import create_course_from_syllabus
 from backend.app.services.warning_service import generate_warnings, list_warnings, update_warning_status
-from backend.app.utils.errors import not_found
+from backend.app.utils.errors import conflict, not_found
 from backend.app.utils.response import ok
 
 router = APIRouter()
@@ -72,7 +73,11 @@ def get_students(
 def create_student(payload: StudentCreate, db: Session = Depends(get_db)):
     item = Student(**payload.model_dump())
     db.add(item)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise conflict(f"student_no already exists: {payload.student_no}")
     db.refresh(item)
     return ok(_student_to_dict(item))
 
@@ -112,7 +117,11 @@ def get_courses(db: Session = Depends(get_db)):
 def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
     item = Course(**payload.model_dump())
     db.add(item)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise conflict(f"course_code already exists: {payload.course_code}")
     db.refresh(item)
     return ok(_course_to_dict(item))
 
@@ -163,7 +172,11 @@ def get_exams(db: Session = Depends(get_db)):
 def create_exam(payload: ExamCreate, db: Session = Depends(get_db)):
     item = Exam(**payload.model_dump())
     db.add(item)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise conflict("exam violates a uniqueness constraint")
     db.refresh(item)
     return ok(_exam_to_dict(item))
 
@@ -337,7 +350,7 @@ def get_score_trend(course_id: int, db: Session = Depends(get_db)):
 
 @router.post("/upload-csv")
 async def upload_csv(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".csv"):
+    if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
 
     contents = await file.read()
@@ -367,7 +380,7 @@ def import_question_scores_file(file: UploadFile = File(...), db: Session = Depe
 
 @router.post("/upload-excel")
 async def upload_excel(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith((".xlsx", ".xls", ".xlsm")):
+    if not (file.filename or "").lower().endswith((".xlsx", ".xls", ".xlsm")):
         raise HTTPException(status_code=400, detail="Only Excel files are supported")
 
     contents = await file.read()
@@ -497,21 +510,6 @@ def _delete_course_related_data(db: Session, course_id: int) -> None:
 
 def _scalar_ids(rows) -> list[int]:
     return [int(row[0]) for row in rows]
-
-
-def _ensure_course_can_delete(db: Session, course_id: int) -> None:
-    if db.query(Exam.id).filter(Exam.course_id == course_id).first():
-        raise _conflict("course has exams and cannot be deleted")
-    if db.query(AssessmentComponent.id).filter(AssessmentComponent.course_id == course_id).first():
-        raise _conflict("course has assessment components and cannot be deleted")
-    if db.query(OBEOutcome.id).filter(OBEOutcome.course_id == course_id).first():
-        raise _conflict("course has OBE outcomes and cannot be deleted")
-    if db.query(WarningRule.id).filter(WarningRule.course_id == course_id).first():
-        raise _conflict("course has warning rules and cannot be deleted")
-    if db.query(WarningResult.id).filter(WarningResult.course_id == course_id).first():
-        raise _conflict("course has warning results and cannot be deleted")
-    if db.query(AnalysisRun.id).filter(AnalysisRun.course_id == course_id).first():
-        raise _conflict("course is referenced by analysis runs and cannot be deleted")
 
 
 def _ensure_exam_can_delete(db: Session, exam_id: int) -> None:

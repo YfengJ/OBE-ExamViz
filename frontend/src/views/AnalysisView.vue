@@ -197,7 +197,12 @@ const questionGroupValues = computed(() => dashboard.value?.question_groups.map(
 const hasBlockingDataIssues = computed(() => dashboard.value?.readiness?.can_generate_report === false)
 
 async function loadRuns() {
-  runs.value = await analysisRunApi.list()
+  try {
+    runs.value = await analysisRunApi.list()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析任务失败')
+    return
+  }
   const fromRoute = Number(route.query.run || appStore.selectedRunId || 0)
   selectedRunId.value = runs.value.some((item) => item.run.id === fromRoute) ? fromRoute : runs.value[0]?.run.id || 0
   if (selectedRunId.value) {
@@ -208,7 +213,11 @@ async function loadRuns() {
 
 async function loadDashboard() {
   if (!selectedRunId.value) return
-  dashboard.value = await analysisRunApi.dashboard(selectedRunId.value)
+  try {
+    dashboard.value = await analysisRunApi.dashboard(selectedRunId.value)
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析看板失败')
+  }
 }
 
 function onRunChange() {

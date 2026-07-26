@@ -98,7 +98,12 @@ const generating = ref(false)
 const suggestionTemplate = ref<AiSuggestionTemplate>('per_outcome')
 
 async function loadRuns() {
-  runs.value = await analysisRunApi.list()
+  try {
+    runs.value = await analysisRunApi.list()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析任务失败')
+    return
+  }
   const fromRoute = Number(route.query.run || appStore.selectedRunId || 0)
   selectedRunId.value = runs.value.some((item) => item.run.id === fromRoute) ? fromRoute : runs.value[0]?.run.id || 0
   if (selectedRunId.value) {
@@ -109,9 +114,13 @@ async function loadRuns() {
 
 async function loadSummary() {
   if (!selectedRunId.value) return
-  const data = await analysisRunApi.paperSummaryCache(selectedRunId.value)
-  summary.value = { warnings: data.warnings }
-  aiNarrative.value = data.cached && data.ai_enabled ? data.narrative : null
+  try {
+    const data = await analysisRunApi.paperSummaryCache(selectedRunId.value)
+    summary.value = { warnings: data.warnings }
+    aiNarrative.value = data.cached && data.ai_enabled ? data.narrative : null
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载预警数据失败')
+  }
 }
 
 async function generateNarrative() {

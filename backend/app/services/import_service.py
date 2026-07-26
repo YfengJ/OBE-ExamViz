@@ -121,7 +121,12 @@ def import_exam_scores(db: Session, file: UploadFile) -> dict[str, Any]:
             errors.append(f"row {idx}: student_no not found {student_no}")
             continue
 
-        course_id = int(row.get("course_id"))
+        try:
+            course_id = int(row.get("course_id"))
+        except (TypeError, ValueError):
+            skipped += 1
+            errors.append(f"row {idx}: invalid course_id {row.get('course_id')!r}")
+            continue
         exam_type = str(row.get("exam_type", "final")).strip()
         exam = (
             db.query(Exam)
@@ -134,7 +139,12 @@ def import_exam_scores(db: Session, file: UploadFile) -> dict[str, Any]:
             errors.append(f"row {idx}: exam not found for course_id={course_id}, type={exam_type}")
             continue
 
-        score = float(row.get("total_score", 0))
+        try:
+            score = float(row.get("total_score", 0))
+        except (TypeError, ValueError):
+            skipped += 1
+            errors.append(f"row {idx}: invalid total_score {row.get('total_score')!r}")
+            continue
         existing = (
             db.query(StudentExamScore)
             .filter(StudentExamScore.student_id == student_id, StudentExamScore.exam_id == exam.id)

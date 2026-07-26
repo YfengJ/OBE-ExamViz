@@ -245,7 +245,12 @@ const calculationNotes = [
 ]
 
 async function loadRuns() {
-  runs.value = await analysisRunApi.list()
+  try {
+    runs.value = await analysisRunApi.list()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析任务失败')
+    return
+  }
   const fromRoute = Number(route.query.run || appStore.selectedRunId || 0)
   selectedRunId.value = runs.value.some((item) => item.run.id === fromRoute) ? fromRoute : runs.value[0]?.run.id || 0
   if (selectedRunId.value) {
@@ -265,7 +270,7 @@ function goAnalysis() {
 }
 
 function downloadTemplate(file: string) {
-  window.open(`/api/v1/import/templates/${file}?t=${Date.now()}`, '_blank')
+  window.open(`/api/v1/import/templates/${file}?t=${Date.now()}`, '_blank', 'noopener')
 }
 
 function sourceTone(method: string) {

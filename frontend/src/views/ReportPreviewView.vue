@@ -233,7 +233,12 @@ const canGenerateReport = computed(() => Boolean(dashboard.value?.readiness?.can
 const readinessErrors = computed(() => dashboard.value?.readiness?.blocking_errors || [])
 
 async function loadRuns() {
-  runs.value = await analysisRunApi.list()
+  try {
+    runs.value = await analysisRunApi.list()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载分析任务失败')
+    return
+  }
   const fromRoute = Number(route.query.run || appStore.selectedRunId || 0)
   selectedRunId.value = runs.value.some((item) => item.run.id === fromRoute) ? fromRoute : runs.value[0]?.run.id || 0
   if (selectedRunId.value) {
@@ -244,16 +249,20 @@ async function loadRuns() {
 
 async function loadDashboard() {
   if (!selectedRunId.value) return
-  const [dashboardData, narrativeData, suggestionData, lineageData] = await Promise.all([
-    analysisRunApi.dashboard(selectedRunId.value),
-    analysisRunApi.narrativeCache(selectedRunId.value),
-    analysisRunApi.paperSummaryCache(selectedRunId.value),
-    analysisRunApi.dataLineage(selectedRunId.value),
-  ])
-  dashboard.value = dashboardData
-  dataLineage.value = lineageData
-  reportNarrative.value = narrativeData.narrative
-  aiSuggestion.value = suggestionData.cached && suggestionData.ai_enabled ? suggestionData.narrative : null
+  try {
+    const [dashboardData, narrativeData, suggestionData, lineageData] = await Promise.all([
+      analysisRunApi.dashboard(selectedRunId.value),
+      analysisRunApi.narrativeCache(selectedRunId.value),
+      analysisRunApi.paperSummaryCache(selectedRunId.value),
+      analysisRunApi.dataLineage(selectedRunId.value),
+    ])
+    dashboard.value = dashboardData
+    dataLineage.value = lineageData
+    reportNarrative.value = narrativeData.narrative
+    aiSuggestion.value = suggestionData.cached && suggestionData.ai_enabled ? suggestionData.narrative : null
+  } catch (error) {
+    ElMessage.error((error as Error).message || '加载报告数据失败')
+  }
 }
 
 async function generateNarrative() {

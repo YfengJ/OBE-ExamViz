@@ -51,6 +51,10 @@ data/
 # TypeScript build cache
 *.tsbuildinfo
 
+# Auto-generated unplugin type declarations (regenerated on demand)
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+
 # Misc build / temp directories
 docx/
 pptx_builder/

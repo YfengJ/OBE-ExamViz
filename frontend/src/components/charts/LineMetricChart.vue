@@ -25,10 +25,14 @@ function renderChart() {
   })
 }
 
+function handleResize() {
+  chart?.resize()
+}
+
 onMounted(async () => {
   await nextTick()
   renderChart()
-  window.addEventListener('resize', renderChart)
+  window.addEventListener('resize', handleResize)
 })
 
 watch(
@@ -40,7 +44,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', renderChart)
+  window.removeEventListener('resize', handleResize)
   chart?.dispose()
 })
 </script>

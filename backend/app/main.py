@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,8 @@ from backend.app.api.router import router
 from backend.app.core.config import settings
 from backend.app.core.database import Base, engine
 import backend.app.models  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def _run_startup_migrations() -> None:
@@ -52,7 +55,9 @@ def _run_startup_migrations() -> None:
                 },
             )
         except Exception:
-            # Non-SQLite databases or already migrated schema should pass through.
+            # Non-SQLite databases or already migrated schema should pass through,
+            # but log it so a genuine migration failure is not silently swallowed.
+            logger.warning("Startup schema migration skipped or failed", exc_info=True)
             conn.rollback()
 
 
